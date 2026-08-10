@@ -1,0 +1,119 @@
+data ingestion
+                    PDF
+                     │
+                     ▼
+               Extract text
+                     │
+                     ▼
+                  Chunking
+                     │
+          ┌──────────┴───────────┐
+          │                      │
+          ▼                      ▼
+     Generate embedding     Entity extraction
+          │                      │
+          │               ┌──────┴──────┐
+          │               ▼             ▼
+          │            Entities     Relations
+          │               │             │
+          └───────┐       │             │
+                  │       │             │
+                  ▼       ▼             ▼
+                ┌────────────────────────────┐
+                │          Neo4j             │
+                │                            │
+                │ Document                   │
+                │    ↓                       │
+                │ Chunk ──MENTIONS──►Entity  │
+                │    │                       │
+                │    │                       │
+                │ embedding                  │
+                │                            │
+                │ Entity ──RELATION──►Entity │
+                └────────────────────────────┘
+
+user prompt
+
+                    USER QUESTION
+                          │
+              ┌───────────┴───────────┐
+              ▼                       ▼
+       Query embedding          Entity extraction
+              │                       │
+              ▼                       ▼
+       Vector search             Entity lookup
+              │                       │
+              └──────────┬────────────┘
+                         ▼
+                    Neo4j graph
+                         │
+                 graph traversal
+                         │
+             ┌───────────┴──────────┐
+             ▼                      ▼
+        Relationships           Evidence
+             │                      │
+             └──────────┬───────────┘
+                        ▼
+                     Context
+                        │
+                        ▼
+                       LLM
+                        │
+                        ▼
+                      Answer
+
+We chunk the source text, generate embeddings for the chunks, 
+extract entities and relationships, and store the structured knowledge in Neo4j. 
+The chunks remain the source evidence and are linked to the entities/relationships. 
+At query time, we can use vector similarity and/or entity/relationship traversal to find the relevant graph paths and source chunks, 
+then give that combined context to the LLM.
+
+Python
+ │
+ ├── Document loader
+ │
+ ├── Chunking
+ │
+ ├── OpenAI embeddings
+ │       │
+ │       ▼
+ │     Qdrant
+ │
+ ├── LLM structured extraction
+ │       │
+ │       ├── entities
+ │       └── relationships
+ │               │
+ │               ▼
+ │             Neo4j
+ │
+ └── Graph RAG retrieval
+         │
+         ├── Qdrant similarity search
+         │
+         ├── Neo4j traversal
+         │
+         └── source chunk retrieval
+                    │
+                    ▼
+                   LLM
+
+Qdrant
+   │
+   │ chunk_id
+   ▼
+Neo4j
+   │
+   ├── entity
+   ├── relationship
+   └── evidence
+
+Qdrant
+→ vectors + chunk metadata
+
+Neo4j
+→ entities + relationships + graph structure + references to evidence
+
+Object storage / PostgreSQL
+→ original documents / full source text
