@@ -20,6 +20,9 @@ class Config(BaseSettings):
     REDIS_PASSWORD: str
     REDIS_POOL_SIZE: str
     REDIS_TIMEOUT: str
+    REDIS_DB: str
+    REDIS_PORT: str
+    REDIS_HOST: str
     
     
     # Neo4j settings
@@ -32,7 +35,7 @@ class Config(BaseSettings):
 
     # Ollama
     OLLAMA_MODEL_NAME: str
-    OLLAMA_TEMPERATURE: str
+    OLLAMA_TEMPERATURE: int
 
     class Config:
         env_file = ".env"

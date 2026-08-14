@@ -2,7 +2,7 @@ from typing import Dict, Any, Optional
 from functools import lru_cache
 from celery import Celery
 
-from app.core.config import Config
+from app.core.config import Config, get_config
 from app.core.logging import logger
 
 # Global Celery app instance
@@ -113,4 +113,4 @@ def get_celery_app() -> Celery:
 
     return celery_app 
 
-
+create_celery_app(get_config())
