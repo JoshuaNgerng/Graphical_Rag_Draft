@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, File, UploadFile
 from neo4j import Driver
+from app.core.config import get_config
 from app.dependencies import get_driver
-from app.storage.LocalStorage import LocalStorage
+from app.storage.LocalStorage import get_local_storage
 from app.neo4j_graphrag.Neo4jQuery import Neo4jQuery
 from app.task.doc_ingestion import ingest_pdf_doc
 from app.schema.response.task import TaskInfo
@@ -10,7 +11,7 @@ router = APIRouter()
 
 @router.post('/add_doc')
 async def add_doc(file: UploadFile = File(...)):
-    file_manager = LocalStorage()
+    file_manager = get_local_storage()
     file_bytes = await file.read()
     file_key = file_manager.upload_file(file.filename, file_bytes)
     task =  ingest_pdf_doc.delay(file_key) # type: ignore celery is gay
