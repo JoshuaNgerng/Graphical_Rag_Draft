@@ -1,0 +1,83 @@
+version: "3.8"
+services:
+  app:
+    container_name: app
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    env_file:
+      - .env
+    restart: always
+    depends_on:
+      - ollama
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "8000:8000"
+
+  neo4j:
+    image: neo4j:2026.06.0
+    restart: unless-stopped
+
+    environment:
+      NEO4J_AUTH: "neo4j/${DRIVER_PASSWORD}"
+
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+  redis:
+    container_name: redis
+    image: redis:7-alpine
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+
+  celery:
+    container_name: celery
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    command: celery -A app.core.celery:celery_app worker --loglevel=info 
+    depends_on:
+      - redis
+      - app
+    env_file:
+      - .env
+
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+
+    ports:
+      - "11434:11434"
+
+    volumes:
+      - ollama_data:/root/.ollama
+
+    entrypoint: ["/bin/sh", "-c"]
+    command: |
+      ollama serve &
+
+      echo "Waiting for Ollama..."
+      until ollama list >/dev/null 2>&1; do
+        sleep 1
+      done
+
+      echo "Pulling ${OLLAMA_MODEL_NAME}..."
+      ollama pull "${OLLAMA_MODEL_NAME}"
+
+      echo "Ollama is ready."
+      wait
+
+
+volumes:
+  redis_data:
+  neo4j_data:
+  neo4j_logs:
+  ollama_data:
