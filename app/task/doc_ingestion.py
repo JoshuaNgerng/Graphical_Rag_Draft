@@ -1,7 +1,5 @@
 from io import BytesIO
 
-from regex import P
-
 from app.core.config import get_config
 from app.core.celery import create_celery_app
 from app.core.state import get_state
