@@ -16,7 +16,7 @@ def ingest_pdf_doc(file_key: str):
     file_bytes = file_manaager.download_file(file_key)
     doc = fitz.open(stream=BytesIO(file_bytes), filetype="pdf")
     try:
-        state = get_state(get_config())
+        state = get_state()
         ingestor = get_neo4j_ingestor(state)
         ingestor.ingest_doc(doc, file_key)
     finally:

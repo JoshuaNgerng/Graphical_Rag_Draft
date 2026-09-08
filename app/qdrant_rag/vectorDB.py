@@ -4,7 +4,7 @@ from typing import cast
 
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams, PointStruct
-from sentence_transformers import SentenceTransformer
+# from sentence_transformers import SentenceTransformer
 import uuid
 import re
 import unicodedata

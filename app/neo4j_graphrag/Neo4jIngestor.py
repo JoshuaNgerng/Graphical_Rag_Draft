@@ -2,15 +2,14 @@ from typing import Callable, Generator, Protocol
 from pathlib import Path
 import uuid
 
-from confection import Config
 from pymupdf import Document
 from neo4j import Driver
-from sentence_transformers import SentenceTransformer
 
 from app.core.state import State
 from app.neo4j_graphrag.EntityNRelationship import GraphExtraction 
 from app.neo4j_graphrag.RelationshipExtractorOllama import RelationshipExtractorOllama
 from app.neo4j_graphrag.PDFParser import ChunkData, PDFParser
+from app.ollama.Embedding import Embedding
 
 PdfChunker = Callable[[Document], Generator[ChunkData, None, None]]
 
@@ -35,7 +34,7 @@ class Neo4jIngestor:
 
     def __init__(
             self, driver: Driver, database: str,
-            model: SentenceTransformer, 
+            model: Embedding, 
             extractor: RelationshipExtractorOllama,
             chunker: PdfChunker
     ) -> None:
@@ -51,10 +50,9 @@ class Neo4jIngestor:
         document_id = self.__make_document_id(filename)
         for chunk in self.chunker(doc):
             chunk_id = self.__make_chunk_id(document_id, chunk.chunk_index)
-            embedding = self.embedding_model.encode(
-                chunk.text,
-                normalize_embeddings=True
-            ).tolist()
+            embedding = list(self.embedding_model.encode(
+                chunk.text
+            ))
             buffer.chunk.append(self.__prepare_chunk(
                 document_id, chunk_id, embedding, chunk
             ))
@@ -224,7 +222,7 @@ class Neo4jIngestor:
 def get_neo4j_ingestor(state: State):
     return Neo4jIngestor(
         state.driver, state.database_name, 
-        state.model, state.extractor,
+        state.embedding, state.extractor,
         PDFParser.chunk_doc
     )
 

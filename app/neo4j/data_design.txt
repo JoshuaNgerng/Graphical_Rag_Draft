@@ -1,0 +1,52 @@
+(:Document)
+    │
+    └─[:CONTAINS]→ (:Chunk)
+                       │
+                       └─[:SUPPORTS]→ (:Claim {
+                              id,
+                              predicate,
+                              confidence,
+                              evidence_start,
+                              evidence_end,
+                              relationship_id
+                          })
+                           │          │
+                      SUBJECT       OBJECT
+                           │          │
+                           ▼          ▼
+                        (:Entity)  (:Entity)
+
+
+(:Entity)-[:RELATES {
+    id,
+    type
+}]->(:Entity)
+
+(:Document)
+      │
+   CONTAINS
+      │
+      ▼
+   (:Chunk)
+      │
+   SUPPORTS
+      │
+      ▼
+   (:Claim {
+       id,
+       predicate,
+       relationship_id,
+       confidence,
+       evidence_text
+   })
+      │             │
+   SUBJECT        OBJECT
+      │             │
+      ▼             ▼
+ (:Entity)       (:Entity)
+      │             │
+      └─── RELATES ─┘
+            {
+              id,
+              type
+            }

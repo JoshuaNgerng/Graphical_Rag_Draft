@@ -1,10 +1,8 @@
 import os
-from re import S
 from typing import Optional
 from pydantic import field_validator
 from pydantic_settings import BaseSettings
-from sympy.abc import s
-from wrapt import lru_cache
+from functools import lru_cache
 
 class Config(BaseSettings):
     """Application settings."""
@@ -18,25 +16,23 @@ class Config(BaseSettings):
     # Celery and Redis
     REDIS_URL: str
     REDIS_PASSWORD: str
-    REDIS_POOL_SIZE: str
-    REDIS_TIMEOUT: str
+    REDIS_POOL_SIZE: int
+    REDIS_TIMEOUT: int
     REDIS_DB: str
     REDIS_PORT: str
     REDIS_HOST: str
-    
     
     # Neo4j settings
     DRIVER_URL: str
     DRIVER_PASSWORD: str
     DRIVER_DATABASE: str
 
-    # Embedding Model
-    EMBEDDING_MODEL_NAME: str
-
     # Ollama
+    OLLAMA_URL: str
     OLLAMA_MODEL_NAME: str
     OLLAMA_TEMPERATURE: int
-
+    OLLAMA_EMBEDDING_MODEL: str
+    
     class Config:
         env_file = ".env"
         case_sensitive = True

@@ -1,0 +1,62 @@
+                    Phase 1
+                       │
+                       ▼
+              Entity Observations
+                       │
+                       ▼
+             Normalize observation
+                       │
+                       ▼
+          ┌─────────────────────────┐
+          │ Candidate Retrieval     │
+          │                         │
+          │ exact name              │
+          │ alias                   │
+          │ fuzzy search            │
+          │ embedding               │
+          │ type filter             │
+          └────────────┬────────────┘
+                       ▼
+                 Top K candidates
+                       │
+                       ▼
+              ┌─────────────────┐
+              │ Deterministic   │
+              │ validation      │
+              └────────┬────────┘
+                       │
+               obvious match?
+                /           \
+              yes            no
+               │              │
+               ▼              ▼
+             MATCH       Ollama Judge
+                              │
+                    ┌─────────┼─────────┐
+                    ▼         ▼         ▼
+                  MATCH     CREATE   AMBIGUOUS
+                    │         │         │
+                    └─────────┼─────────┘
+                              ▼
+                       Resolved Entities
+                              │
+                              ▼
+                    Relationship Resolution
+                              │
+                              ▼
+                    Candidate Relations
+                              │
+                              ▼
+                    Type/domain/range check
+                              │
+                              ▼
+                         Ollama Judge
+                              │
+                              ▼
+                       Graph validation
+                              │
+                              ▼
+                         DB staging
+                              │
+                              ▼
+                             DB

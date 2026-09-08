@@ -1,9 +1,9 @@
 
-from wrapt import lru_cache
+from functools import lru_cache
 
-from app.core.config import Config
+from app.core.config import Config, get_config
 from neo4j import GraphDatabase
-from sentence_transformers import SentenceTransformer
+from ollama.Embedding import Embedding
 from app.neo4j_graphrag.RelationshipExtractorOllama import RelationshipExtractorOllama
 
 class State:
@@ -16,16 +16,15 @@ class State:
 
         self.database_name = config.DRIVER_DATABASE
 
+        self.embedding = Embedding(config)
+
         # Startup Ollama Extractor
         self.extractor = RelationshipExtractorOllama(config)
-
-        # Startup Embedding model
-        self.model = SentenceTransformer(config.EMBEDDING_MODEL_NAME)
 
     def transfer(self, state):
         for key, value in self.__dict__.items():
             setattr(state, key, value)
 
 @lru_cache
-def get_state(config: Config):
-        return State(config)
+def get_state():
+    return State(get_config())

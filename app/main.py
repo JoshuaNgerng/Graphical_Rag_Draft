@@ -2,16 +2,12 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from neo4j import GraphDatabase
-from sentence_transformers import SentenceTransformer
-
 from app.core.config import get_config
 from app.core.logging import setup_logging, logger
 from app.core.state import get_state
 from app.core.celery import create_celery_app
 from app.core.redis import close_redis_pool, get_redis_pool, check_redis_connection
 from app.api.router import api_router 
-from app.neo4j_graphrag.RelationshipExtractorOllama import RelationshipExtractorOllama
 from app.neo4j_graphrag.Neo4jSchema import Neo4jSchema
 # from app.middleware import LoggingMiddleware, ErrorHandlerMiddleware, DocsSecurityMiddleware
 
@@ -24,8 +20,7 @@ async def lifespan(app: FastAPI):
     Handles startup and shutdown events.
     """
     config = get_config()
-    app.state.c
-    state =  get_state(config)
+    state =  get_state()
 
     # Startup operations
     logger.info(f"Starting up {config.APP_NAME}")
@@ -35,6 +30,7 @@ async def lifespan(app: FastAPI):
 
     logger.info("Standardizing Schema for Neo4j Driver")
     Neo4jSchema.ensure(driver=app.state.driver)
+    logger.info("Finish Neo4j Schema")
 
     # Start Redis pool
     redis_pool = await get_redis_pool()

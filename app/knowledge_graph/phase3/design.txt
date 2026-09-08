@@ -1,0 +1,45 @@
+                  RelationshipObservation
+                          │
+                          ▼
+                   Entity Resolution
+                          │
+                          ▼
+                  source_id / target_id
+                          │
+                          ▼
+             ┌─────────────────────────┐
+             │ Existing relationships │
+             │ between these entities │
+             └────────────┬────────────┘
+                          │
+                          ▼
+                Relationship Resolution
+                       LLM #1
+                          │
+              ┌───────────┼───────────┐
+              ▼           ▼           ▼
+            MATCH        NEW       UNKNOWN
+              │           │
+              │           ▼
+              │      canonical type
+              │
+              ▼
+        canonical type
+              │
+              └─────────────┐
+                            ▼
+                  Relationship Validation
+                       LLM #2
+                            │
+                  ┌─────────┼─────────┐
+                  ▼         ▼         ▼
+                ACCEPT    UNKNOWN    REJECT
+                  │
+                  ▼
+            relationship_id
+                  │
+                  ▼
+            Save Claim
+                  │
+                  ▼
+       Create/reuse RELATES

@@ -1,37 +1,18 @@
-import ollama
+from ollama import Client
 from string import Template
 from app.neo4j_graphrag.EntityNRelationship import (
     EntityType, RelationshipType, GraphExtraction
 )
+from app.ollama.LLM import LLM
 from app.core.config import Config
 
-class RelationshipExtractorOllama:
+class RelationshipExtractorOllama(LLM):
     def __init__(self, config: Config) -> None:
-        self.model = config.OLLAMA_MODEL_NAME
-        self.options = {
-            "temperature": config.OLLAMA_TEMPERATURE #0
-        }
+        super().__init__(config)
         self.context = self.__build_context()
 
     def extract(self, text: str):
-        response = ollama.chat(
-            model=self.model, #"qwen2.5:7b",
-            messages=[
-                {
-                    "role": "system",
-                    "content": self.context
-                },
-                {
-                    "role": "user",
-                    "content": text,
-                }
-            ],
-            format=GraphExtraction.model_json_schema(),
-            options=self.options
-        )
-        data = response.message.content
-        if data is None: return GraphExtraction()
-        return GraphExtraction.model_validate_json(data)
+        return self.process(text, self.context, GraphExtraction)
 
 
     def __build_context(self):

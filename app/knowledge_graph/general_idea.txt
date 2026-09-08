@@ -1,0 +1,31 @@
+for e in entities:
+
+    # 1. Generate candidates
+    candidates = search_entity_candidates(
+        name=e.name,
+        entity_type=e.type,
+    )
+
+    # 2. Deterministic resolution
+    match = exact_match(e, candidates)
+
+    if match:
+        resolve(match)
+        continue
+
+    # 3. Enrich candidates from existing graph
+    candidate_contexts = [
+        get_entity_context(c)
+        for c in candidates
+    ]
+
+    # 4. Compare new evidence against historical context
+    result = resolve_with_context(
+        entity=e,
+        current_chunk=summary.chunk,
+        observations=summary.observations,
+        candidates=candidate_contexts,
+    )
+
+    # 5. MATCH / NEW / UNCERTAIN
+    ...
