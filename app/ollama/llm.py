@@ -42,3 +42,6 @@ class LLM:
         if issubclass(schema, BaseModel):
             return schema.model_validate_json(data)
         return data # type: ignore
+
+    def close(self):
+        self.client.close()

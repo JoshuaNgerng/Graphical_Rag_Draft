@@ -7,24 +7,33 @@
                   source_id / target_id
                           │
                           ▼
-             ┌─────────────────────────┐
-             │ Existing relationships │
-             │ between these entities │
-             └────────────┬────────────┘
-                          │
-                          ▼
-                Relationship Resolution
+              Relationship Candidate Retrieval
+                    ┌───────────────┐
+                    │               │
+                    ▼               ▼
+             existing pair      type-level
+             relationships      candidates
+                    │               │
+                    └───────┬───────┘
+                            ▼
+                       Rank by
+                     context score
+                            │
+                            ▼
+                      Top candidates
+                            │
+                            ▼
+                  Relationship Resolution
                        LLM #1
                           │
               ┌───────────┼───────────┐
               ▼           ▼           ▼
             MATCH        NEW       UNKNOWN
               │           │
-              │           ▼
-              │      canonical type
-              │
-              ▼
-        canonical type
+              │           │
+              │           │
+              ▼           ▼
+       Resolved Relationship 
               │
               └─────────────┐
                             ▼

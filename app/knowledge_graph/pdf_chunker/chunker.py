@@ -1,20 +1,13 @@
 from dataclasses import dataclass
 import json
-from typing import cast
-
+from typing import cast, Any, Generator
+from itertools import islice
 import re
 import unicodedata
 from numpy import block
 import pymupdf as fitz
 from pymupdf import Document, Page
-
-@dataclass
-class ChunkData:
-    text: str
-    chunk_index: int
-    page_start: int = 0
-    page_end: int = 0
-    section: str | None = None
+from app.models.documents import ChunkData
 
 @dataclass
 class PDFBlockInfo:
@@ -26,108 +19,124 @@ class PDFBlockInfo:
     block_no: int
     block_type: int
 
-def chunk_doc(doc: Document):
-    chunk_index = 1
-    leftover_chunk: ChunkData | None = None
-    for page_num in range(1, len(doc) + 1):
-        page = doc.load_page(page_num - 1)
-        blocks = _get_block_info_from_page(page)
-        if page_num == 1:
-            blocks = _remove_header_footer(blocks, page.rect.height, header_ratio=0.2)
-        else:
-            blocks = _remove_header_footer(blocks, page.rect.height)
-        for block in blocks:
-            text = _normalize_text(block.text)
-            res =  ChunkData(text, chunk_index, page_start=page_num, page_end=page_num)
-            if leftover_chunk:
-                text = leftover_chunk.text + ' ' +  text
-                res.text = text
-                res.page_start = leftover_chunk.page_start
-                leftover_chunk = None
-            if _incomplete_chunk(res):
-                leftover_chunk = res
-                continue
-            yield res
-            chunk_index += 1
+class PdfChunker:
+    def __init__(self, bulk_size: int = 50) -> None:
+        self.bulk_size = bulk_size
 
-def _remove_header_footer(
-        blocks: list[PDFBlockInfo], page_height,
-        header_ratio = 0.1, footer_ratio = 0.85
-):
-    y1_lim = page_height * header_ratio
-    y0_lim = page_height * footer_ratio
-    return [
-        b
-        for b in blocks
-        if (
-            b.y1 > y1_lim and b.y0 < y0_lim
-        )
-    ]
+    def bulk_chunk_doc(self, doc: Document) -> Generator[list[ChunkData], Any, None]:
+        chunks = self.chunk_doc(doc)
 
-def _incomplete_chunk(chunk: ChunkData):
-    text = chunk.text
-    # print(f'|{text}| {text[-1] == '.'}')
-    return False if text[-1] == '.' else True
+        while batch := list(islice(chunks, self.bulk_size)):
+            yield batch
 
-def _normalize_text(text: str | None):
-    """
-    Normalize text for comparison, matching, and
-    header/footer detection.
+    def chunk_doc(self, doc: Document) -> Generator[ChunkData, Any, None]:
+        chunk_index = 1
+        leftover_chunk: ChunkData | None = None
+        for page_num in range(1, len(doc) + 1):
+            page = doc.load_page(page_num - 1)
+            blocks = self._get_block_info_from_page(page)
+            if page_num == 1:
+                blocks = self._remove_header_footer(
+                    blocks, page.rect.height, header_ratio=0.2
+                )
+            else:
+                blocks = self._remove_header_footer(blocks, page.rect.height)
+            for block in blocks:
+                text = self._normalize_text(block.text)
+                res =  ChunkData(
+                    text=text, chunk_index=chunk_index, 
+                    page_start=page_num, page_end=page_num
+                )
+                if leftover_chunk:
+                    text = leftover_chunk.text + ' ' +  text
+                    res.text = text
+                    res.page_start = leftover_chunk.page_start
+                    leftover_chunk = None
+                if self._incomplete_chunk(res):
+                    leftover_chunk = res
+                    continue
+                yield res
+                chunk_index += 1
 
-    Does not modify the original text stored in Qdrant.
-    """
+    def _remove_header_footer(
+            self,
+            blocks: list[PDFBlockInfo], page_height,
+            header_ratio = 0.1, footer_ratio = 0.85
+    ):
+        y1_lim = page_height * header_ratio
+        y0_lim = page_height * footer_ratio
+        return [
+            b
+            for b in blocks
+            if (
+                b.y1 > y1_lim and b.y0 < y0_lim
+            )
+        ]
 
-    if not text:
-        return ""
+    def _incomplete_chunk(self, chunk: ChunkData):
+        text = chunk.text
+        # print(f'|{text}| {text[-1] == '.'}')
+        return False if text[-1] == '.' else True
 
-    # Normalize Unicode compatibility characters
-    text = unicodedata.normalize("NFKC", text)
+    def _normalize_text(self, text: str | None):
+        """
+        Normalize text for comparison, matching, and
+        header/footer detection.
 
-    # Quotes
-    quote_map = {
-        "\u2018": "'",   # left single quote
-        "\u2019": "'",   # right single quote
-        "\u201a": "'",   # single low-9 quote
-        "\u201b": "'",   # single high-reversed-9 quote
-        "\u201c": '"',   # left double quote
-        "\u201d": '"',   # right double quote
-        "\u201e": '"',   # double low-9 quote
-        "\u201f": '"',   # double high-reversed-9 quote
-    }
+        Does not modify the original text stored in Qdrant.
+        """
 
-    for old, new in quote_map.items():
-        text = text.replace(old, new)
+        if not text:
+            return ""
 
-    # Dashes / minus signs
-    dash_map = {
-        "\u2010": "-",   # hyphen
-        "\u2011": "-",   # non-breaking hyphen
-        "\u2012": "-",   # figure dash
-        "\u2013": "-",   # en dash
-        "\u2014": "-",   # em dash
-        "\u2212": "-",   # minus sign
-    }
+        # Normalize Unicode compatibility characters
+        text = unicodedata.normalize("NFKC", text)
 
-    for old, new in dash_map.items():
-        text = text.replace(old, new)
+        # Quotes
+        quote_map = {
+            "\u2018": "'",   # left single quote
+            "\u2019": "'",   # right single quote
+            "\u201a": "'",   # single low-9 quote
+            "\u201b": "'",   # single high-reversed-9 quote
+            "\u201c": '"',   # left double quote
+            "\u201d": '"',   # right double quote
+            "\u201e": '"',   # double low-9 quote
+            "\u201f": '"',   # double high-reversed-9 quote
+        }
 
-    # Non-breaking spaces
-    text = text.replace("\u00a0", " ")
+        for old, new in quote_map.items():
+            text = text.replace(old, new)
 
-    # Collapse whitespace
-    text = re.sub(r"\s+", " ", text)
+        # Dashes / minus signs
+        dash_map = {
+            "\u2010": "-",   # hyphen
+            "\u2011": "-",   # non-breaking hyphen
+            "\u2012": "-",   # figure dash
+            "\u2013": "-",   # en dash
+            "\u2014": "-",   # em dash
+            "\u2212": "-",   # minus sign
+        }
 
-    return text.strip().lower()
+        for old, new in dash_map.items():
+            text = text.replace(old, new)
 
-def _get_block_info_from_page(page: Page) -> list[PDFBlockInfo]:
-    blocks = cast(tuple, page.get_text("blocks"))
-    return [
-        PDFBlockInfo(
-            x0=x0, y0=y0, x1=x1, y1=y1,
-            text=text, block_no=block_no, block_type=block_type
-        )
-        for x0, y0, x1, y1, text, block_no, block_type in blocks
-    ]
+        # Non-breaking spaces
+        text = text.replace("\u00a0", " ")
+
+        # Collapse whitespace
+        text = re.sub(r"\s+", " ", text)
+
+        return text.strip().lower()
+
+    def _get_block_info_from_page(self, page: Page) -> list[PDFBlockInfo]:
+        blocks = cast(tuple, page.get_text("blocks"))
+        return [
+            PDFBlockInfo(
+                x0=x0, y0=y0, x1=x1, y1=y1,
+                text=text, block_no=block_no, block_type=block_type
+            )
+            for x0, y0, x1, y1, text, block_no, block_type in blocks
+        ]
 
 
 '''
@@ -137,8 +146,9 @@ can make a chunking method that detecting headings and group metadata section fo
 
 if __name__ == "__main__":
     test = []
+    chunker = PdfChunker(1)
     with fitz.open("eu_air_policy.pdf") as doc:
-        for chunk in chunk_doc(doc):
+        for chunk in chunker.chunk_doc(doc):
             test.append({
                 "text": chunk.text,
                 "chunk_index": chunk.chunk_index,

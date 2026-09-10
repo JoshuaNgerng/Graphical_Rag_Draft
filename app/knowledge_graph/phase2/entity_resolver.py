@@ -10,13 +10,9 @@ from app.models.observations import (
     EntityContext, EntityNormalizeObservation
 )
 from app.ollama.llm import LLM
+from app.knowledge_graph.models.decisions import Decision as D
 
-class Decision(BaseModel):
-    decision: Literal["MERGE", "CREATE", "UNKNOWN"]
-
-    confidence: float = Field(ge=0.0, le=1.0)
-    reasoning: str
-
+class Decision(D):
     # Only populated for MERGE
     entity_id: str | None = None
 

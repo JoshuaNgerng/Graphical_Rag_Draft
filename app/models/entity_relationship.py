@@ -3,7 +3,7 @@ import unicodedata
 from uuid import uuid4
 from typing import TYPE_CHECKING
 from pydantic import (
-    AliasChoices, BaseModel, ConfigDict, 
+    AliasChoices, AliasPath, BaseModel, ConfigDict, 
     Field, field_validator, model_validator
 )
 from app.models.documents import Chunk, Node
@@ -25,20 +25,35 @@ class Entity(BaseModel):
     description: str
 
 class Relationship(BaseModel):
-    type: str = Field(validation_alias="relationship_type")
+    relationship_type_id: str = Field(
+        serialization_alias="id",
+        validation_alias=AliasPath("relationship_type_id", "id")
+    )
     # relationship_type = relationship.type.strip().upper()
 
-    @field_validator('type', mode='after')
+    @field_validator('relationship_type_id', mode='after')
     @classmethod
     def normalize_type(cls, val):
         val = normalize_name(val)
         return val.upper()
 
-class RelationshipType(BaseModel):
+class RelationshipTypeInfo(Relationship):
     description: str
     source_type: str | None = Field(default=None)
     target_type: str | None = Field(default=None)
+
+class RelationshipType(RelationshipTypeInfo):
     embedding: list[float] = Field(default_factory=list)
+
+    model_config = ConfigDict(serialize_by_alias=True, from_attributes=True)
+
+    def repr_self_text(self):
+        return (
+f"""
+{self.source_type} - {self.relationship_type_id} -> {self.target_type}
+DESCRIPTION: {self.description}
+"""
+        )
 
 class EntityNormalize(Entity):
     normalize_name: str = ''
@@ -64,14 +79,20 @@ Aliases: {", ".join(self.alias)}
 """
         )
 
-class RelationshipNode(Node, Relationship):
+class RelationshipNode(Relationship):
+    id: str = Field(
+        validation_alias=AliasChoices("id", "relationship_id"),
+    )
     source_id: str
     target_id: str
 
-class RelationshipTypeNode(Node, RelationshipType):
-    pass
+    model_config = ConfigDict(from_attributes=True)
 
-# llm facing
+class RelationshipCandidate(RelationshipTypeInfo):
+    relationship_id: str | None = Field(default=None)
+    source_id: str | None = Field(default=None)
+    target_id: str | None = Field(default=None)
+
 
 def resolve_relationship_claims(
         chunk_info: Chunk | str,
@@ -90,14 +111,14 @@ def resolve_relationship_claims(
         source_id = entity_ids_mapping.get(r.source, None)
         target_id = entity_ids_mapping.get(r.target, None)
         if source_id is None or target_id is None: continue
-        key = (r.type, source_id, target_id)
-        relationship_id = f"{source_id}:{r.type}:{target_id}"
+        key = (r.relationship_type_id, source_id, target_id)
+        relationship_id = f"{source_id}:{r.relationship_type_id}:{target_id}"
         if key not in visted_relationships:
             visted_relationships.add(key)
             relationships_res.append(
                 RelationshipNode(
                     id=relationship_id,
-                    type=r.type,
+                    relationship_type_id=r.relationship_type_id,
                     source_id=source_id,
                     target_id=target_id
                 )
@@ -109,7 +130,7 @@ def resolve_relationship_claims(
                 subject_id=source_id,
                 object_id=target_id,
                 relationship_id=relationship_id,
-                predicate=r.type,
+                predicate=r.relationship_type_id,
                 confidence=r.confidence,
                 evidence_text=r.evidence_text
             )

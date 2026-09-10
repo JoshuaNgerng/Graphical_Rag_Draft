@@ -1,6 +1,7 @@
 from app.models.entity_relationship import (
-    EntityNode, EntityNormalize, EntityContext
+    EntityNode, EntityNormalize
 )
+from app.models.observations import EntityContext
 from app.neo4j.driver import Neo4jDriver
 from app.ollama.embedding import Embedding
 from typing import Self
@@ -31,7 +32,7 @@ class RetrievalCandidates:
     def rank_all_likely_candidates(
         self,
         entity: EntityNormalize,
-        context: str,
+        context: str | list[float],
         candidate_limit: int = 30,
         final_limit: int = 10,
     ):
@@ -63,22 +64,28 @@ class RetrievalCandidates:
         buffer: dict[str, tuple[EntityNode, CandidateScoring]] = {}
         if exact_match:
             buffer[exact_match.id] = (exact_match, CandidateScoring(exact_match=1.0))
-        for score, match in semantic_similar.items():
-            if not match.id in buffer:
-                buffer[match.id] = (match, CandidateScoring())
-            buffer[match.id][1].semantic_match = score
-        for score, match in vector_similar.items():
-            if not match.id in buffer:
-                buffer[match.id] = (match, CandidateScoring())
-            buffer[match.id][1].vector_match = score
+        for data in semantic_similar:
+            id_ = data.data.id
+            if not id_ in buffer:
+                buffer[id_] = (data.data, CandidateScoring())
+            buffer[id_][1].semantic_match = data.score
+        for data in vector_similar:
+            id_ = data.data.id
+            if not id_ in buffer:
+                buffer[id_] = (data.data, CandidateScoring())
+            buffer[id_][1].vector_match = data.score
         res = [(v[0], v[1].finalize_score()) for v in buffer.values()]
         res.sort(key=lambda x: x[1].final_score, reverse=True)
         return res[:limit]
 
     def rank_by_candidate_list_by_context(
-            self, entites: list[tuple[EntityNode, CandidateScoring]], context: str
+            self, entites: list[tuple[EntityNode, CandidateScoring]], 
+            context: str | list[float]
         ) -> list[tuple[EntityNode, list[EntityContext], CandidateScoring]]:
-        context_embedding = list(self.embedding.encode(context))
+        if isinstance(context, str):
+            context_embedding = list(self.embedding.encode(context))
+        else:
+            context_embedding = context
         res : list[tuple[EntityNode, list[EntityContext], CandidateScoring]] = []
         for e in entites:
             entity, score = e
@@ -88,11 +95,11 @@ class RetrievalCandidates:
             if not entity_context:
                 res.append((entity, [], score))
                 continue
-            score.context_match = max(entity_context.keys())
+            score.context_match = entity_context[0].score
             res.append(
                 (
                     entity, 
-                    self._combine_context_claims(entity_context), 
+                    [e.data for e in entity_context[:10]], 
                     score.finalize_score()
                 )
             )
@@ -103,7 +110,3 @@ class RetrievalCandidates:
         text = f'name:{entity.name}, type:{entity.type}, description:{entity.description}'
         return self.embedding.encode(text)
 
-    def _combine_context_claims(self, context: dict[float, EntityContext]):
-        return [
-            s for _, s in sorted(context.items(), reverse=True)[:10]
-        ]

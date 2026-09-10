@@ -1,71 +1,98 @@
-from typing import Literal, Sequence
-
-from pydantic import BaseModel, Field
+from typing import Sequence
 
 from app.core.config import Config
-from app.models.entity_relationship import EntityNode, RelationshipObservation, RelationshipNode
+from app.models.entity_relationship import (
+    EntityNode, RelationshipNode, RelationshipCandidate
+)
 from app.ollama.llm import LLM
+from app.knowledge_graph.models.decisions import (
+    Decision as D, DecisionType
+)
 
-class RelationshipResolution(BaseModel):
-    decision: Literal["MATCH", "NEW", "UNKNOWN"]
-    relationship_type: str | None
-    existing_relationship_id: str | None
-    confidence: float = Field(ge=0.0, le=1.0)
-    reasoning: str
+class RelationshipResolution(D):
+    relationship_type: str | None = None
+    existing_relationship_id: str | None = None
+    new_description: str | None = None
 
 class RelationshipResolutionData(RelationshipResolution):
-    relationship_node: RelationshipNode
+    relationship_candidate: RelationshipCandidate 
 
 class RelationshipResolver(LLM):
     def __init__(self, config: Config):
         super().__init__(config)
         self.context = self.__build_context()
 
-
     def resolve_relationship(
             self, 
             new_relationship: RelationshipNode,
             source_entity: EntityNode,
             target_entity: EntityNode,
-            existing_relationships: Sequence[RelationshipNode]
+            existing_relationships: Sequence[RelationshipCandidate]
         ):
 
         for r in existing_relationships:
-            if new_relationship.id == r.id:
+            if new_relationship.id == r.relationship_id:
                 return RelationshipResolutionData(
-                    decision="MATCH",
-                    relationship_type=r.type,
-                    existing_relationship_id=r.id,
+                    decision=DecisionType.MERGE,
+                    relationship_type=r.relationship_type_id,
+                    existing_relationship_id=r.relationship_id,
                     confidence=1.0,
                     reasoning="excat match with existing relationship",
-                    relationship_node=r
+                    relationship_candidate=r
                 )
         input_ = self.__complie_relationships(
-            new_relationship, source_entity, target_entity, existing_relationships
+            new_relationship, source_entity, target_entity, 
+            existing_relationships
         )
         decision = self.process(input_, self.context, RelationshipResolution)
-        if decision.decision == "NEW" or not decision.existing_relationship_id:
+        if (
+            decision.decision == DecisionType.CREATE or 
+            not decision.existing_relationship_id
+        ):
             return RelationshipResolutionData(
                 **decision.model_dump(),
-                relationship_node=new_relationship
+                relationship_candidate=self._create_new_relationship_candidate(
+                    new_relationship, source_entity, target_entity, 
+                    decision.new_description or ''
+                )
             )
         node = None
         for r in existing_relationships:
-            if r.id == decision.existing_relationship_id:
+            if r.relationship_id == decision.existing_relationship_id:
                 node = r
         if not node:
             return RelationshipResolutionData(
-                decision='UNKNOWN',
+                decision=DecisionType.UNKNOWN,
                 relationship_type=None, 
                 existing_relationship_id=None,
                 confidence=0.0,
                 reasoning="Cannot retireved suggested relationship id from llm",
-                relationship_node=new_relationship
+                relationship_candidate=self._create_new_relationship_candidate(
+                    new_relationship, source_entity, target_entity, 
+                    decision.new_description or ''
+                )
             )
         return RelationshipResolutionData(
-            **decision.model_dump(), relationship_node=node
+            **decision.model_dump(), relationship_candidate=node
         )
 
+    def _create_new_relationship_candidate(
+            self, new_relationship: RelationshipNode,
+            source_entity: EntityNode,
+            target_entity: EntityNode,
+            new_description: str
+        ):
+        type_ = new_relationship.relationship_type_id
+        id_ = f'{source_entity.id}:{type_}:{target_entity.id}'
+        return RelationshipCandidate(
+            relationship_id=id_,
+            relationship_type_id=type_,
+            description=new_description,
+            source_type=source_entity.type,
+            source_id=source_entity.id,
+            target_id=target_entity.id,
+            target_type=target_entity.type
+        )
 
     def __complie_entity(
             self, entity: EntityNode
@@ -81,37 +108,39 @@ Description: {entity.description}
             new_relationship: RelationshipNode,
             source_entity: EntityNode,
             target_entity: EntityNode,
-            existing_relationships: Sequence[RelationshipNode]
+            existing_relationships: Sequence[RelationshipCandidate]
         ):
-        res = F"""
+        res = (
+f"""
 EXTRACTED RELATIONSHIP
 
 Source:
 {self.__complie_entity(source_entity)}
 
 Predicate:
-{new_relationship.type}
+{new_relationship.relationship_type_id}
 
 Source Type:
 {self.__complie_entity(target_entity)}
 
-
 EXISTING RELATIONSHIPS BETWEEN SOURCE AND TARGET
-
-
 """
+        )
 
         if not existing_relationships:
             res +=  "No existing relationships were retrieved"
             return res
 
         for r in existing_relationships:
-            buffer = f"""
+            buffer = (
+f"""
 --- RELATIONSHIP ---
-ID: {r.id}
-TYPE: {r.type}
+ID: {r.relationship_id}
+TYPE: {r.relationship_type_id}
+DESCRIPTION: {r.description}
 --- END RELATIONSHIP ---
 """
+            )
             res += buffer
         return res
             
@@ -135,9 +164,9 @@ Do NOT determine whether the source evidence is sufficiently strong or trustwort
 
 ## Decision definitions
 
-### MATCH
+### MERGE
 
-Return MATCH when the extracted relationship expresses the same semantic relationship as one of the existing relationships.
+Return MERGE when the extracted relationship expresses the same semantic relationship as one of the existing relationships.
 
 The wording does not need to be identical.
 
@@ -149,27 +178,31 @@ For example:
 
 may all represent the same relationship type, such as EMPLOYED_BY.
 
-If MATCH is selected:
+If MERGE is selected:
 
 * relationship_type must contain the canonical relationship type.
 * existing_relationship_id must contain the ID of the matching existing relationship.
+* new_description leave as null
 
 Do not create a new relationship when an existing relationship has the same semantic meaning.
 
-### NEW
+### CREATE
 
-Return NEW when the extracted relationship represents a relationship that is not represented by any of the existing relationships.
+Return CREATE when the extracted relationship represents a relationship that is not represented by any of the existing relationships.
 
-If NEW is selected:
+If CREATE is selected:
 
 * relationship_type must contain the canonical relationship type if one can be determined.
 * existing_relationship_id must be null.
+* new_description must be given a concise description for the new relationship
 
-NEW means a new relationship instance between these entities, not necessarily a new relationship type in the ontology.
+CREATE means a new relationship instance between these entities, not necessarily a new relationship type in the ontology.
 
 Prefer an existing canonical relationship type when one semantically matches the extracted predicate.
 
 ### UNKNOWN
+
+* leave the fields relationship_type, existing_relationship_id and new_description as null
 
 Return UNKNOWN when there is insufficient information to determine whether the relationship matches an existing relationship.
 
@@ -180,9 +213,9 @@ Use UNKNOWN when:
 * the available relationship descriptions are insufficient;
 * the relationship meaning cannot be reliably determined.
 
-Do not select MATCH merely because one candidate is the highest-ranked candidate.
+Do not select MERGE merely because one candidate is the highest-ranked candidate.
 
-Do not select NEW merely because no existing relationship was retrieved.
+Do not select CREATE merely because no existing relationship was retrieved.
 
 ## Important rules
 
@@ -210,7 +243,7 @@ Do not select NEW merely because no existing relationship was retrieved.
 
 8. If no existing relationships are provided, this does NOT prove that the relationship is new. The retrieval step may have failed to find a matching relationship.
 
-9. If an existing relationship has the same semantic meaning as the extracted relationship, prefer MATCH.
+9. If an existing relationship has the same semantic meaning as the extracted relationship, prefer MERGE.
 
 10. Different wording can represent the same relationship.
 
@@ -261,6 +294,5 @@ Explain why the extracted relationship matches an existing relationship, represe
 Do not provide unnecessary reasoning or assumptions that are not supported by the input.
 
 Return only the requested structured output.
-
 '''
         )

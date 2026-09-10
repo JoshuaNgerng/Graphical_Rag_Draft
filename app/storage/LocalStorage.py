@@ -6,15 +6,16 @@ from functools import lru_cache
 from app.core.config import get_config
 
 class LocalStorage:
-    def __init__(self, dirname: str):
-        self.root_dir = Path(tempfile.gettempdir()) / dirname
+    def __init__(self, dirname: str, root: str | None = None):
+        root_dir = Path(root) if root else Path(tempfile.gettempdir()) 
+        self.root_dir = root_dir / dirname
         self.root_dir.mkdir(parents=True, exist_ok=True)
 
     def upload_file(self, file_name: str | None, file_bytes: bytes) -> str:
         if not file_name:
             file_name = str(uuid4())
         file_name_ = Path(file_name)
-        file_name = f'{file_name_.stem}_{uuid4}{file_name_.suffix}'
+        file_name = f'{file_name_.stem}_{uuid4()}{file_name_.suffix}'
         file_path = self.root_dir / file_name
         try:
             file_path.write_bytes(file_bytes)
@@ -31,4 +32,4 @@ class LocalStorage:
 
 @lru_cache
 def get_local_storage():
-    return LocalStorage(get_config().APP_NAME)
+    return LocalStorage(get_config().APP_NAME, get_config().STORAGE_ROOT_DIR)

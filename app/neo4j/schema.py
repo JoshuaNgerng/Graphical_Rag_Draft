@@ -1,8 +1,5 @@
 from neo4j import Driver
 
-from neo4j import Driver
-
-
 class Neo4jSchema:
     @staticmethod
     def ensure(driver: Driver):
@@ -28,6 +25,18 @@ class Neo4jSchema:
             CREATE CONSTRAINT claim_id_unique IF NOT EXISTS
             FOR (c:Claim)
             REQUIRE c.id IS UNIQUE
+        """)
+
+        driver.execute_query("""
+            CREATE CONSTRAINT relationship_type_id_unique IF NOT EXISTS
+            FOR (rt:RelationshipType)
+            REQUIRE rt.id IS UNIQUE
+        """)
+
+        driver.execute_query("""
+            CREATE CONSTRAINT relationship_id_unique IF NOT EXISTS
+            FOR ()-[r:RELATES]-()
+            REQUIRE r.id IS UNIQUE
         """)
 
         driver.execute_query("""
@@ -68,6 +77,24 @@ class Neo4jSchema:
                     `vector.similarity_function`: 'cosine'
                 }
             }
+        """)
+
+        driver.execute_query("""
+            CREATE VECTOR INDEX relationship_type_embedding_index IF NOT EXISTS
+            FOR (rt:RelationshipType)
+            ON rt.embedding
+            OPTIONS {
+                indexConfig: {
+                    `vector.dimensions`: 768,
+                    `vector.similarity_function`: 'cosine'
+                }
+            }
+        """)
+
+        driver.execute_query("""
+            CREATE INDEX claim_relationship_id IF NOT EXISTS
+            FOR (c:Claim)
+            ON (c.relationship_id)
         """)
 
         records, _, _ = driver.execute_query("""

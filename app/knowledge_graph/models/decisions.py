@@ -6,7 +6,17 @@ class DecisionType(StrEnum):
     CREATE = auto().upper()
     UNKNOWN = auto().upper()
 
-class Decision(BaseModel):
-    decision: DecisionType
+class ChooseType(StrEnum):
+    ACCEPT = auto().upper()
+    REJECT = auto().upper()
+    UNKNOWN = auto().upper()
+
+class InferenceBase(BaseModel):
     confidence: float = Field(ge=0.0, le=1.0)
     reasoning: str
+
+class Decision(InferenceBase):
+    decision: DecisionType
+
+class Choose(InferenceBase):
+    choose: ChooseType

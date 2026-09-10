@@ -38,11 +38,11 @@ class RelationshipNormalization:
         )
         if target_id is None or source_id is None:
             return None
-        type_ = observation.type
+        type_ = observation.relationship_type_id
         id_ = f"{source_id}:{type_}:{target_id}"
         return RelationshipNode(
             id=id_,
-            type=type_,
+            relationship_type_id=type_,
             source_id=source_id,
             target_id=target_id
         )

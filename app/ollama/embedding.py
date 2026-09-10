@@ -6,11 +6,7 @@ from app.core.config import Config, get_config
 
 class Embedding:
 
-    def __init__(
-        self,
-        config: Config
-    ) -> None:
-
+    def __init__(self, config: Config) -> None:
         self.client = Client(config.OLLAMA_URL)
         self.model = config.OLLAMA_EMBEDDING_MODEL
 
@@ -22,6 +18,9 @@ class Embedding:
         )
 
         return response.embeddings[0]
+
+    def close(self):
+        self.client.close()
 
     @property
     def dimension(self) -> int: # use for testing for Neo4j schema setup

@@ -4,7 +4,9 @@ from string import Template
 
 from app.core.config import Config
 from app.ollama.llm import LLM
-from app.models.entity_relationship import GraphObservation, GraphObservationNormalize 
+from app.models.observations import (
+    GraphObservation, GraphObservationNormalize 
+)
 
 
 class RelationExtractor(LLM):

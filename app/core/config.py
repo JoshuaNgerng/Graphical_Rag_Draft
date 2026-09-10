@@ -1,6 +1,6 @@
 import os
 from typing import Optional
-from pydantic import field_validator
+from pydantic import field_validator, Field
 from pydantic_settings import BaseSettings
 from functools import lru_cache
 
@@ -12,6 +12,9 @@ class Config(BaseSettings):
     API_PREFIX: str = "/api"
     DEBUG: bool = os.getenv("DEBUG", "False").lower() in ("true", "1", "t")
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
+
+    # storage 
+    STORAGE_ROOT_DIR: str | None = Field(default=None)
 
     # Celery and Redis
     REDIS_URL: str
