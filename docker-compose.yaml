@@ -10,12 +10,11 @@ services:
     restart: always
     depends_on:
       - ollama
+      - neo4j
+      - rabbitmq
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     ports:
       - "8000:8000"
-    volumes:
-      - huggingface_cache:/root/.cache/huggingface
-
 
   neo4j:
     image: neo4j:2026.06.0
@@ -31,29 +30,22 @@ services:
     volumes:
       - neo4j_data:/data
       - neo4j_logs:/logs
-  redis:
-    container_name: redis
-    image: redis:7-alpine
-    restart: always
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    command: redis-server --appendonly yes
 
-  celery:
-    container_name: celery
+  worker:
     build:
       context: .
       dockerfile: Dockerfile
-    command: celery -A app.core.celery:celery_app worker --concurrency=2 --loglevel=info 
-    depends_on:
-      - redis
-      - app
     env_file:
       - .env.docker
-    volumes:
-      - huggingface_cache:/root/.cache/huggingface
+    command: dramatiq app.tasks
+    depends_on:
+      - rabbitmq
+
+  rabbitmq:
+    image: rabbitmq:4-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
 
   ollama:
     image: ollama/ollama:latest
@@ -74,9 +66,28 @@ services:
       ollama pull $OLLAMA_MODEL_NAME;
       wait $$pid"
 
+  services:
+    app:
+      build: .
+      env_file:
+        - .env
+      depends_on:
+        - minio
+
+    minio:
+      image: minio/minio
+      command: server /data --console-address ":9001"
+      env_file:
+        - .env
+      ports:
+        - "9000:9000"
+        - "9001:9001"
+      volumes:
+        - minio_data:/data
+
 volumes:
   redis_data:
   neo4j_data:
   neo4j_logs:
   ollama_data:
-  huggingface_cache:
+  minio_data:
