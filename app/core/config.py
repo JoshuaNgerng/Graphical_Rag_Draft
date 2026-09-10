@@ -1,7 +1,6 @@
 import os
-from typing import Optional
 from pydantic import field_validator, Field
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
 
 class Config(BaseSettings):
@@ -13,17 +12,19 @@ class Config(BaseSettings):
     DEBUG: bool = os.getenv("DEBUG", "False").lower() in ("true", "1", "t")
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
 
-    # storage 
+    # storage (if local)
     STORAGE_ROOT_DIR: str | None = Field(default=None)
 
-    # Celery and Redis
-    REDIS_URL: str
-    REDIS_PASSWORD: str
-    REDIS_POOL_SIZE: int
-    REDIS_TIMEOUT: int
-    REDIS_DB: str
-    REDIS_PORT: str
-    REDIS_HOST: str
+    # minio
+    MINIO_ENDPOINT: str
+    MINIO_ACCESS_KEY: str
+    MINIO_SECRET_KEY: str
+    MINIO_BUCKET: str
+    MINIO_REGION: str = "us-east-1"
+
+    # Dramatiq and RabbitMQ
+    RABBITMQ_HOST: str = Field(default="localhost")
+    RABBITMQ_PORT: int = Field(default=5672)
     
     # Neo4j settings
     DRIVER_URL: str
@@ -36,9 +37,11 @@ class Config(BaseSettings):
     OLLAMA_TEMPERATURE: int
     OLLAMA_EMBEDDING_MODEL: str
     
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        # extra="ignore",
+    )
 
     @field_validator('LOG_LEVEL')
     @classmethod

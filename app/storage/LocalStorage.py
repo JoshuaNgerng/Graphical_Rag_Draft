@@ -3,12 +3,13 @@ import tempfile
 from uuid import uuid4
 from functools import lru_cache
 
-from app.core.config import get_config
+from app.core.config import Config, get_config
 
 class LocalStorage:
-    def __init__(self, dirname: str, root: str | None = None):
+    def __init__(self, config: Config):
+        root = config.STORAGE_ROOT_DIR
         root_dir = Path(root) if root else Path(tempfile.gettempdir()) 
-        self.root_dir = root_dir / dirname
+        self.root_dir = root_dir / config.APP_NAME
         self.root_dir.mkdir(parents=True, exist_ok=True)
 
     def upload_file(self, file_name: str | None, file_bytes: bytes) -> str:
@@ -32,4 +33,4 @@ class LocalStorage:
 
 @lru_cache
 def get_local_storage():
-    return LocalStorage(get_config().APP_NAME, get_config().STORAGE_ROOT_DIR)
+    return LocalStorage(get_config())

@@ -1,4 +1,8 @@
 from pydantic import BaseModel
+from datetime import datetime
 
-class TaskInfo(BaseModel):
-    task_id: str
+class JobInfo(BaseModel):
+    job_id: str
+    job_type: str
+    message: dict
+    date_queues: datetime

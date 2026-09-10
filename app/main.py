@@ -1,75 +1,13 @@
-from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import get_config
 from app.core.logging import setup_logging, logger
-from app.core.state import get_state
-from app.core.celery import create_celery_app
-from app.core.redis import close_redis_pool, get_redis_pool, check_redis_connection
+from app.core.dependencies import lifespan
 from app.api.router import api_router 
-from app.neo4j_graphrag.Neo4jSchema import Neo4jSchema
 # from app.middleware import LoggingMiddleware, ErrorHandlerMiddleware, DocsSecurityMiddleware
 
 config = get_config()
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """
-    Lifespan context manager for FastAPI application.
-    Handles startup and shutdown events.
-    """
-    config = get_config()
-    state =  get_state()
-
-    # Startup operations
-    logger.info(f"Starting up {config.APP_NAME}")
- 
-    # Startup Neo4j Driver
-    state.transfer(app.state)
-
-    logger.info("Standardizing Schema for Neo4j Driver")
-    Neo4jSchema.ensure(driver=app.state.driver)
-    logger.info("Finish Neo4j Schema")
-
-    # Start Redis pool
-    redis_pool = await get_redis_pool()
-    if redis_pool:
-        logger.info("Redis connection pool initialized")
-        
-        # Check if Redis server is actually reachable
-        redis_ok = await check_redis_connection()
-        if not redis_ok:
-            logger.warning(
-                "Redis is enabled but server is not reachable. "
-                "Please check Redis server status and connection settings. "
-                "Application will continue running but Redis features will not work."
-            )
-    else:
-        logger.warning("Failed to initialize Redis connection pool")
-    app.state.redis_pool = redis_pool
-
-    # Start Celery
-    celery_app = create_celery_app(config)
-    if celery_app:
-        logger.info("Celery application initialized successfully")
-    else:
-        logger.warning("Failed to initialize Celery application")
-        # error
-    app.state.celery_app = celery_app
-
-    logger.info("Application initialization completed successfully")
-    
-    yield
-    
-    # Shutdown operations
-
-    app.state.driver.close()
-    await close_redis_pool()
-    
-        
-    logger.info(f"Shutting down {config.APP_NAME}")
-
 
 def create_application() -> FastAPI:
     """Create and configure the FastAPI application."""
