@@ -3,9 +3,6 @@ pydantic==2.13.4
 pydantic-settings==2.15.0
 pydantic_core==2.46.4
 
-# sentence transformer
-# sentence-transformers==5.7.0
-
 # pdf
 pymupdf==1.28.2
 
@@ -27,6 +24,7 @@ python-multipart==0.0.32
 
 # dramtiq
 dramatiq==2.2.1
+pika==1.4.4
 
 # utlis
 orjson==3.11.9

@@ -225,3 +225,8 @@ __marimo__/
 #temp ignore
 *json
 check*txt
+
+# volumes
+minio_data
+neo4j_data
+neo4j_logs
