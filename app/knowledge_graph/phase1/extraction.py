@@ -18,7 +18,7 @@ class RelationExtractor(LLM):
 
     def extract(self, text: str) -> GraphObservationNormalize:
         data = self.process(
-            text, self.context, GraphObservation
+            text, self.context, GraphObservation 
         )
         return GraphObservationNormalize.model_validate(data)
 

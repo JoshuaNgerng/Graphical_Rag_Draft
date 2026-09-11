@@ -137,7 +137,6 @@ def setup_logging():
     # Other libraries that use standard logging
     for _log in [
         "uvicorn", "uvicorn.access", "uvicorn.error", "fastapi",
-        "celery", "celery.worker", "celery.app.trace",
     ]:
         _logger = logging.getLogger(_log)
         _logger.handlers = [InterceptHandler()]

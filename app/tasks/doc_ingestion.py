@@ -8,14 +8,14 @@ from app.knowledge_graph.runner import processing_pdf
 import pymupdf as fitz
 import dramatiq
 
-@dramatiq.actor
+@dramatiq.actor(time_limit=24 * 60 * 60 * 1000)
 def ingest_pdf_doc(job_id: str, file_key: str):
     config = get_config()
     storage = MinIOStorage(config)
     file_bytes = storage.download_file(file_key)
     with fitz.open(stream=BytesIO(file_bytes), filetype="pdf") as doc:
         with DataProcessingContext(config) as ctx:
-            processing_pdf(doc, ctx)            
+            processing_pdf(doc, file_key, ctx)            
 
 '''
 move to store info in postgres example

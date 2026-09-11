@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field, ConfigDict
 from app.models.entity_relationship import (
-    Entity, EntityNormalize, Relationship
+    EntityInfo, EntityNormalize, Relationship
 )
 from app.models.documents import Node
 
@@ -25,7 +25,7 @@ class EntityContext(Claim):
     chunk_id: str
     chunk_text: str
 
-class EntityObservation(Entity, Observation):
+class EntityObservation(EntityInfo, Observation):
     model_config = ConfigDict(from_attributes=True)
 
 class EntityNormalizeObservation(EntityNormalize, Observation):

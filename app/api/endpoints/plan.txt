@@ -1,0 +1,28 @@
+/api/v1
+│
+├── /entities
+│   ├── GET    /
+│   ├── GET    /search
+│   ├── GET    /{entity_id}
+│   ├── GET    /{entity_id}/relationships
+│   ├── GET    /{entity_id}/graph
+│   └── GET    /{entity_id}/context
+│
+├── /relationships
+│   ├── GET    /{relationship_id}
+│   └── GET    /between
+│
+├── /relationship-types
+│   ├── GET    /
+│   └── GET    /{relationship_type_id}
+│
+├── /claims
+│   ├── GET    /{claim_id}
+│   └── GET    /
+│
+├── /documents
+│   ├── GET    /
+│   └── GET    /{document_id}
+│
+└── /graph
+    └── GET    /stats

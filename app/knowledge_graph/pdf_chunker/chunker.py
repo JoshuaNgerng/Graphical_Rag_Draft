@@ -7,7 +7,7 @@ import unicodedata
 from numpy import block
 import pymupdf as fitz
 from pymupdf import Document, Page
-from app.models.documents import ChunkData
+from app.models.documents import Chunk, ChunkData
 
 @dataclass
 class PDFBlockInfo:
@@ -23,15 +23,15 @@ class PdfChunker:
     def __init__(self, bulk_size: int = 50) -> None:
         self.bulk_size = bulk_size
 
-    def bulk_chunk_doc(self, doc: Document) -> Generator[list[ChunkData], Any, None]:
-        chunks = self.chunk_doc(doc)
+    def bulk_chunk_doc(self, doc: Document, document_id: str) -> Generator[list[Chunk], Any, None]:
+        chunks = self.chunk_doc(doc, document_id)
 
         while batch := list(islice(chunks, self.bulk_size)):
             yield batch
 
-    def chunk_doc(self, doc: Document) -> Generator[ChunkData, Any, None]:
+    def chunk_doc(self, doc: Document, doc_id: str) -> Generator[Chunk, Any, None]:
         chunk_index = 1
-        leftover_chunk: ChunkData | None = None
+        leftover_chunk: Chunk | None = None
         for page_num in range(1, len(doc) + 1):
             page = doc.load_page(page_num - 1)
             blocks = self._get_block_info_from_page(page)
@@ -43,7 +43,8 @@ class PdfChunker:
                 blocks = self._remove_header_footer(blocks, page.rect.height)
             for block in blocks:
                 text = self._normalize_text(block.text)
-                res =  ChunkData(
+                res =  Chunk(
+                    document_id=doc_id, chunk_id=f'{doc_id}:{chunk_index}',
                     text=text, chunk_index=chunk_index, 
                     page_start=page_num, page_end=page_num
                 )
@@ -148,7 +149,7 @@ if __name__ == "__main__":
     test = []
     chunker = PdfChunker(1)
     with fitz.open("eu_air_policy.pdf") as doc:
-        for chunk in chunker.chunk_doc(doc):
+        for chunk in chunker.chunk_doc(doc, "test_id"):
             test.append({
                 "text": chunk.text,
                 "chunk_index": chunk.chunk_index,

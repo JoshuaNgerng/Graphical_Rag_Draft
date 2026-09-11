@@ -14,10 +14,12 @@ class MinIOStorage(StorageInterface):
         self.client = boto3.client(
             "s3",
             endpoint_url=config.MINIO_ENDPOINT,
-            aws_access_key_id=config.MINIO_ACCESS_KEY,
-            aws_secret_access_key=config.MINIO_SECRET_KEY,
+            aws_access_key_id=config.MINIO_ROOT_USER,
+            aws_secret_access_key=config.MINIO_ROOT_PASSWORD,
             region_name=config.MINIO_REGION,
         )
+
+        # self._ensure_bucket_exists()
 
     def upload_file(self, file_name: str | None, file_bytes: bytes) -> str:
         if not file_name:
@@ -50,3 +52,13 @@ class MinIOStorage(StorageInterface):
     def close(self):
         self.client.close()
 
+    def _ensure_bucket_exists(self) -> None:
+        try:
+            self.client.head_bucket(Bucket=self.bucket)
+        except ClientError as e:
+            error_code = e.response["Error"].get("Code")
+
+            if error_code in ("404", "NoSuchBucket"):
+                self.client.create_bucket(Bucket=self.bucket)
+            else:
+                raise

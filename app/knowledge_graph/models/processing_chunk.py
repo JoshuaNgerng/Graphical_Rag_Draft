@@ -2,7 +2,7 @@
 from dataclasses import dataclass, field
 from html import entities 
 
-from app.models.documents import ChunkData
+from app.models.documents import Chunk, ChunkData
 from app.models.entity_relationship import (
     RelationshipNode, EntityNode, RelationshipType 
 )
@@ -32,7 +32,7 @@ class RelationshipExtraction:
 
 @dataclass
 class ChunkDataExtraction:
-    chunk_info: ChunkData
+    chunk_info: Chunk 
     context_embedding: list[float] = field(default_factory=list)
     entities: list[EntityExtraction] = field(default_factory=list)
     relationships: list[RelationshipExtraction] = field(default_factory=list)

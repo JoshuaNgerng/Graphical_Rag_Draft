@@ -5,6 +5,7 @@ from typing import TypeVar
 from pydantic import BaseModel
 
 from app.core.config import Config
+from app.core.logging import logger
 
 T = TypeVar("T", bound=BaseModel | str)
 
@@ -15,6 +16,7 @@ class LLM:
             "temperature": config.OLLAMA_TEMPERATURE #0
         }
         self.client = Client(config.OLLAMA_URL) 
+        self.log = config.OLLAMA_LOG
 
     def process(
             self, input: str, context: str, 
@@ -37,6 +39,12 @@ class LLM:
             options=self.options
         )
         data = response.message.content
+        if self.log:
+            try:
+                import json
+                logger.info(json.dumps(data, indent=2))
+            except:
+                logger.info(data)
         if data is None:
             return schema()
         if issubclass(schema, BaseModel):

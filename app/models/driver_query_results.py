@@ -1,5 +1,6 @@
 from typing import Generic, TypeVar
 from pydantic import BaseModel, Field
+from app.models.pagination import PaginationInfo
 
 # class SaveFailure(BaseModel):
 #     id: str
@@ -19,5 +20,5 @@ class DataResult(BaseModel, Generic[T]):
     score: float
     data: T
 
-    def gather_data(self):
-        return [d for d in self.data]
+class PaginationResult(PaginationInfo, Generic[T]):
+    data: list[T]

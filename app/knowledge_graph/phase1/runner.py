@@ -1,15 +1,14 @@
 from typing import Sequence
 
 from app.knowledge_graph.models.processing_chunk import (
-    ChunkDataExtraction, ChunkData,
-    EntityExtraction, RelationshipExtraction
+    ChunkDataExtraction, EntityExtraction, RelationshipExtraction
 )
 
-from app.knowledge_graph.phase1.extraction import RelationExtractor
 from app.knowledge_graph.context_manager import DataProcessingContext
+from app.models.documents import Chunk
 
 def run_phase1(
-        data: Sequence[ChunkData], ctx: DataProcessingContext
+        data: Sequence[Chunk], ctx: DataProcessingContext
 ) -> list[ChunkDataExtraction]:
     res = []
     for d in data:
@@ -27,5 +26,6 @@ def run_phase1(
                     for r in extracted.relationships
                 ]
             )
-        ) 
+        )
+    ctx.driver.save_chunks(list(data))
     return res

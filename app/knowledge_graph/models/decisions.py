@@ -1,15 +1,27 @@
 from enum import StrEnum, auto
 from pydantic import BaseModel, Field, field_validator
 
-class DecisionType(StrEnum):
-    MERGE = auto().upper()
-    CREATE = auto().upper()
-    UNKNOWN = auto().upper()
+class EnumUpperStr(StrEnum):
+    def __new__(cls, value: str):
+        obj = str.__new__(cls, value)
+        obj._value_ = value
+        return obj
 
-class ChooseType(StrEnum):
-    ACCEPT = auto().upper()
-    REJECT = auto().upper()
-    UNKNOWN = auto().upper()
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+
+        for member_name, member in cls.__members__.items():
+            member._value_ = member_name.upper()
+
+class DecisionType(EnumUpperStr):
+    MERGE = auto()
+    CREATE = auto()
+    UNKNOWN = auto()
+
+class ChooseType(EnumUpperStr):
+    ACCEPT = auto()
+    REJECT = auto()
+    UNKNOWN = auto()
 
 class InferenceBase(BaseModel):
     confidence: float = Field(ge=0.0, le=1.0)

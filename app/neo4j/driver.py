@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from neo4j import GraphDatabase, EagerResult
+from neo4j import GraphDatabase, EagerResult, Record
 from typing import TypeVar
 from app.core.config import Config
 from app.models.documents import Chunk
@@ -8,11 +8,12 @@ from app.models.entity_relationship import (
     RelationshipCandidate
 )
 from app.models.observations import (
-    EntityContext, Claim
+    ClaimNode, EntityContext, Claim
 )
 from app.models.driver_query_results import (
-    SaveResult, DataResult
+    PaginationResult, SaveResult, DataResult
 )
+from app.models.pagination import PaginationRequest
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -74,45 +75,33 @@ class Neo4jDriver:
         
         result = self.driver.execute_query(
             """
-            UNWIND $claims AS claim
+            UNWIND $entities AS entity
 
-            OPTIONAL MATCH (chunk:Chunk {id: claim.chunk_id})
-            OPTIONAL MATCH (subject:Entity {id: claim.subject_id})
-            OPTIONAL MATCH (object:Entity {id: claim.object_id})
-            OPTIONAL MATCH (
-                subject)-[r:RELATES {id: claim.relationship_id}]->(object
-            )
+            OPTIONAL MATCH (c:Chunk {id: entity.chunk_id})
 
-            WITH claim, chunk, subject, object, r
+            WITH entity, c
 
             FOREACH (_ IN CASE
-                WHEN chunk IS NOT NULL
-                AND subject IS NOT NULL
-                AND object IS NOT NULL
-                AND r IS NOT NULL
-                THEN [1]
+                WHEN c IS NOT NULL THEN [1]
                 ELSE []
             END |
-                MERGE (c:Claim {id: claim.id})
+                MERGE (e:Entity {id: entity.id})
 
                 SET
-                    c.predicate = claim.predicate,
-                    c.relationship_id = claim.relationship_id,
-                    c.evidence_text = claim.evidence_text,
-                    c.confidence = claim.confidence
+                    e.name = entity.name,
+                    e.normalize_name = entity.normalize_name,
+                    e.alias = entity.alias,
+                    e.canonical_type = entity.type,
+                    e.embedding = entity.embedding,
+                    e.description = entity.description
 
-                MERGE (chunk)-[:SUPPORTS]->(c)
-                MERGE (c)-[:SUBJECT]->(subject)
-                MERGE (c)-[:OBJECT]->(object)
+                MERGE (c)-[:MENTIONS]->(e)
             )
 
             RETURN
-                claim.id AS claim_id,
+                entity.id AS entity_id,
                 CASE
-                    WHEN chunk IS NULL THEN "CHUNK_NOT_FOUND"
-                    WHEN subject IS NULL THEN "SUBJECT_NOT_FOUND"
-                    WHEN object IS NULL THEN "OBJECT_NOT_FOUND"
-                    WHEN r IS NULL THEN "RELATIONSHIP_NOT_FOUND"
+                    WHEN c IS NULL THEN "CHUNK_NOT_FOUND"
                     ELSE "OK"
                 END AS status
             """,
@@ -232,7 +221,7 @@ class Neo4jDriver:
         )
 
     def save_claims(
-            self, claims: list[Claim]
+            self, claims: list[ClaimNode]
     ) -> SaveResult:
         
         result = self.driver.execute_query(
@@ -305,9 +294,26 @@ class Neo4jDriver:
             for row in result.records
         }
 
+    def get_entities_listing(
+            self, entity_type: str, page: PaginationRequest,
+            search: str | None = None
+    ):
+        query = (
+            self.__get_search_entity_listing_query() 
+            if search else self.__get_entity_listing_query()
+        )
+        result = self.driver.execute_query(
+            query,
+            entity_type=entity_type,
+            search=search,
+            skip=page.page,
+            limit=page.page_size
+        )
+
+        return PaginationResult[EntityNode].model_validate(result.records)
+
     def search_exact_entity(
-        self, 
-        name: str
+        self, name: str
     ) -> EntityNode | None:
 
         result = self.driver.execute_query(
@@ -319,10 +325,10 @@ class Neo4jDriver:
             normalize_name=name,
             database_=self.database_name
         )
-        print(result)
-        if not result:
+        # print(result)
+        if not result.records:
             return None
-        return EntityNode.model_validate(result)
+        return EntityNode.model_validate(result.records[0])
 
     def search_entity_candidates(
         self,
@@ -541,7 +547,7 @@ class Neo4jDriver:
     def _build_save_result(
         self,
         total: int,
-        records,
+        records: list[Record],
         id_field: str,
     ) -> SaveResult:
         failed_ids = [
@@ -571,6 +577,47 @@ class Neo4jDriver:
         ]
         data.sort(key=lambda x:x.score, reverse=True)
         return data
+
+    def __get_search_entity_listing_query(self):
+        return """
+CALL db.index.fulltext.queryNodes(
+    'entity_name_fulltext',
+    $search
+)
+YIELD node, score
+        
+WHERE e.canonical_type = $entity_type
+
+RETURN
+    e.id AS id,
+    e.name AS name,
+    e.canonical_type AS entity_type,
+    e.description AS description,
+    e.alias AS alias
+
+ORDER BY e.name ASC
+SKIP $skip
+LIMIT $page_size
+"""
+
+    def __get_entity_listing_query(self):
+        return """
+MATCH (e:Entity)
+WHERE e.canonical_type = $entity_type
+
+RETURN
+    e.id AS id,
+    e.name AS name,
+    e.canonical_type AS entity_type,
+    e.description AS description,
+    e.alias AS alias
+
+ORDER BY e.name ASC
+SKIP $skip
+LIMIT $page_size
+"""
+
+
 
 '''
 save relationship type

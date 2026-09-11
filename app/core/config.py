@@ -17,10 +17,10 @@ class Config(BaseSettings):
 
     # minio
     MINIO_ENDPOINT: str
-    MINIO_ACCESS_KEY: str
-    MINIO_SECRET_KEY: str
     MINIO_BUCKET: str
     MINIO_REGION: str = "us-east-1"
+    MINIO_ROOT_USER: str
+    MINIO_ROOT_PASSWORD: str
 
     # Dramatiq and RabbitMQ
     RABBITMQ_HOST: str = Field(default="localhost")
@@ -36,6 +36,7 @@ class Config(BaseSettings):
     OLLAMA_MODEL_NAME: str
     OLLAMA_TEMPERATURE: int
     OLLAMA_EMBEDDING_MODEL: str
+    OLLAMA_LOG: bool =  Field(default=False)
     
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -52,6 +53,17 @@ class Config(BaseSettings):
             "WARNING", "ERROR", "CRITICAL" 
         }: return "INFO"
         return v
+
+    @field_validator('OLLAMA_LOG')
+    @classmethod
+    def check_ollama_log(cls, v):
+        if isinstance(v, bool):
+            return v
+        try:
+            v = str(v)
+        except:
+            return False
+        return v.lower() in ("true", "1", "t")
 
 @lru_cache
 def get_config():

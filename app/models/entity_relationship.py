@@ -3,7 +3,7 @@ import unicodedata
 from uuid import uuid4
 from typing import TYPE_CHECKING
 from pydantic import (
-    AliasChoices, AliasPath, BaseModel, ConfigDict, 
+    AliasChoices, BaseModel, ConfigDict, 
     Field, field_validator, model_validator
 )
 from app.models.documents import Chunk, Node
@@ -15,11 +15,11 @@ if TYPE_CHECKING:
 
 # base model
 
-class Entity(BaseModel):
+class EntityBase(BaseModel):
     name: str
     type: str = Field(
         validation_alias=AliasChoices(
-            "entity_type", "canonical_type"
+            "type", "entity_type", "canonical_type"
         )
     )
     description: str
@@ -27,7 +27,7 @@ class Entity(BaseModel):
 class Relationship(BaseModel):
     relationship_type_id: str = Field(
         serialization_alias="id",
-        validation_alias=AliasPath("relationship_type_id", "id")
+        validation_alias=AliasChoices("relationship_type_id", "id")
     )
     # relationship_type = relationship.type.strip().upper()
 
@@ -55,7 +55,7 @@ DESCRIPTION: {self.description}
 """
         )
 
-class EntityNormalize(Entity):
+class EntityNormalize(EntityBase):
     normalize_name: str = ''
 
     @model_validator(mode="after")
@@ -64,9 +64,14 @@ class EntityNormalize(Entity):
             self.normalize_name = normalize_name(self.name) 
         return self
 
-class EntityNode(Node, EntityNormalize):
-    alias: list[str]
-    embedding: list[float]
+class EntityInfo(EntityNormalize):
+    alias: list[str] = Field(default_factory=list)
+
+class EntityRepr(EntityBase):
+    alias: list[str] = Field(default_factory=list)
+
+class EntityNode(Node, EntityInfo):
+    embedding: list[float] = Field(default_factory=list)
 
     def repr_self_text(self):
         return (
@@ -93,6 +98,27 @@ class RelationshipCandidate(RelationshipTypeInfo):
     source_id: str | None = Field(default=None)
     target_id: str | None = Field(default=None)
 
+
+def gen_claim(
+        chunk_info: Chunk | str,
+        relationship: RelationshipNode,
+        observation: RelationshipObservation
+) -> ClaimNode:
+    chunk_id = (
+        chunk_info.chunk_id 
+        if isinstance(chunk_info, Chunk) 
+        else chunk_info
+    )
+    return ClaimNode(
+        id=f'{chunk_id}:{str(uuid4())}',
+        chunk_id=chunk_id,
+        subject_id=relationship.source_id,
+        object_id=relationship.target_id,
+        relationship_id=relationship.id,
+        predicate=relationship.relationship_type_id,
+        confidence=observation.confidence,
+        evidence_text=observation.evidence_text
+    )
 
 def resolve_relationship_claims(
         chunk_info: Chunk | str,

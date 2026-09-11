@@ -1,0 +1,467 @@
+Yes. Given your current Neo4j model, I’d design the API around exploration of the knowledge graph, rather than exposing your ingestion methods directly.
+
+Your graph is roughly:
+
+Document
+   │
+   └── CONTAINS → Chunk
+                     │
+                     └── SUPPORTS → Claim
+                                      ├── SUBJECT → Entity
+                                      └── OBJECT → Entity
+
+Entity ── RELATES ──> Entity
+              │
+              └── type → RelationshipType
+
+So the UI/API can naturally have three levels: entity → relationships → evidence/context.
+
+1. Entity list / browse
+Useful for your main "Entity Store" page.
+
+GET /entities
+Supports pagination, filtering, and search.
+
+GET /entities?search=apple&type=Organization&page=1&page_size=25
+
+Response:
+
+{
+  "items": [
+    {
+      "id": "ent_123",
+      "name": "Apple Inc.",
+      "normalize_name": "apple inc",
+      "canonical_type": "Organization",
+      "alias": ["Apple"],
+      "description": "Technology company",
+      "relationship_count": 42,
+      "claim_count": 18
+    }
+  ],
+  "page": 1,
+  "page_size": 25,
+  "total": 1
+}
+
+For this endpoint I'd add a Cypher query specifically for browsing rather than using search_entity_candidates(), since your current search method is primarily a candidate retrieval API.
+
+2. Entity detail
+This would probably be the most important endpoint.
+
+GET /entities/{entity_id}
+Return the entity plus summary information:
+
+{
+  "id": "ent_123",
+  "name": "Apple Inc.",
+  "normalize_name": "apple inc",
+  "canonical_type": "Organization",
+  "alias": ["Apple"],
+  "description": "Technology company",
+  "embedding_available": true,
+  "stats": {
+    "relationships": 42,
+    "claims": 18,
+    "documents": 7
+  }
+}
+
+This powers an entity detail page.
+
+3. Entity relationships
+GET /entities/{entity_id}/relationships
+This gives you the graph around an entity.
+
+GET /entities/ent_123/relationships?direction=both&limit=50
+
+Response:
+
+{
+  "items": [
+    {
+      "relationship_id": "rel_001",
+      "type": "ACQUIRED",
+      "description": "Apple acquired Beats",
+      "direction": "outgoing",
+      "source": {
+        "id": "ent_123",
+        "name": "Apple Inc.",
+        "type": "Organization"
+      },
+      "target": {
+        "id": "ent_456",
+        "name": "Beats Electronics",
+        "type": "Organization"
+      }
+    }
+  ]
+}
+
+I'd support:
+
+direction=outgoing
+direction=incoming
+direction=both
+
+This is particularly useful for a graph visualization.
+
+4. Entity neighborhood / graph endpoint
+For a graph UI, I'd actually make a dedicated endpoint rather than forcing the frontend to assemble the graph.
+
+GET /entities/{entity_id}/graph
+Example:
+
+GET /entities/ent_123/graph?depth=2&limit=100
+
+Response:
+
+{
+  "nodes": [
+    {
+      "id": "ent_123",
+      "label": "Apple Inc.",
+      "type": "Organization"
+    },
+    {
+      "id": "ent_456",
+      "label": "Beats Electronics",
+      "type": "Organization"
+    }
+  ],
+  "edges": [
+    {
+      "id": "rel_001",
+      "source": "ent_123",
+      "target": "ent_456",
+      "type": "ACQUIRED"
+    }
+  ]
+}
+
+This maps almost directly onto libraries such as React Flow, Cytoscape, D3, etc.
+
+I'd make this endpoint optimized specifically for visualization.
+
+5. Relationship detail
+Relationships deserve their own endpoint because your RELATES edge contains important information.
+
+GET /relationships/{relationship_id}
+{
+  "id": "rel_001",
+  "type": {
+    "id": "acquired",
+    "description": "Company A acquires Company B"
+  },
+  "source": {
+    "id": "ent_123",
+    "name": "Apple Inc.",
+    "type": "Organization"
+  },
+  "target": {
+    "id": "ent_456",
+    "name": "Beats Electronics",
+    "type": "Organization"
+  },
+  "claims": [
+    {
+      "id": "claim_001",
+      "predicate": "acquired",
+      "evidence_text": "Apple acquired Beats Electronics...",
+      "confidence": 0.96,
+      "chunk_id": "chunk_123"
+    }
+  ]
+}
+
+This is where the graph becomes explainable.
+
+6. Relationship types
+You already have a RelationshipType node, so expose it.
+
+GET /relationship-types
+GET /relationship-types?source_type=Organization&target_type=Organization
+
+Response:
+
+{
+  "items": [
+    {
+      "id": "acquired",
+      "description": "Organization acquires another organization",
+      "source_type": "Organization",
+      "target_type": "Organization",
+      "relationship_count": 31
+    }
+  ]
+}
+
+This is useful for an admin/ontology page.
+
+You could also have:
+
+GET /relationship-types/{relationship_type_id}
+with:
+
+{
+  "id": "acquired",
+  "description": "...",
+  "source_type": "Organization",
+  "target_type": "Organization",
+  "relationship_count": 31,
+  "examples": [...]
+}
+
+7. Claims / evidence endpoint
+I think this is especially important for your architecture because you're not just storing a graph — you're storing evidence for graph facts.
+
+GET /claims/{claim_id}
+{
+  "id": "claim_001",
+  "predicate": "acquired",
+  "confidence": 0.96,
+  "subject": {
+    "id": "ent_123",
+    "name": "Apple Inc."
+  },
+  "object": {
+    "id": "ent_456",
+    "name": "Beats Electronics"
+  },
+  "relationship_id": "rel_001",
+  "evidence": {
+    "text": "Apple acquired Beats Electronics in 2014.",
+    "chunk_id": "chunk_123",
+    "document_id": "doc_001"
+  }
+}
+
+Then the UI can say:
+
+Apple Inc. → ACQUIRED → Beats Electronics
+
+and underneath:
+
+Evidence
+"Apple acquired Beats Electronics in 2014."
+Source: Annual Report, page 32
+
+That makes your graph much more trustworthy.
+
+8. Entity evidence/context
+You already have the excellent building block:
+
+get_entity_context()
+
+I'd expose that almost directly:
+
+GET /entities/{entity_id}/context
+GET /entities/ent_123/context?query=acquisition&limit=10
+
+The backend can:
+
+Embed query
+Call your get_entity_context()
+Return relevant claims/chunks
+Response:
+
+{
+  "items": [
+    {
+      "claim_id": "claim_001",
+      "subject": "Apple Inc.",
+      "predicate": "acquired",
+      "object": "Beats Electronics",
+      "confidence": 0.96,
+      "evidence_text": "...",
+      "chunk": {
+        "id": "chunk_123",
+        "text": "...",
+        "page_start": 32,
+        "page_end": 32
+      },
+      "score": 0.91
+    }
+  ]
+}
+
+This gives you a semantic evidence search around an entity.
+
+9. Search endpoint
+I'd separate ordinary entity search from graph exploration.
+
+GET /entities/search
+GET /entities/search?q=apple&limit=20
+
+Internally you can combine:
+
+exact match
+    ↓
+full-text search
+    ↓
+vector search
+    ↓
+(optional) hybrid ranking
+
+Your current methods already give you most of the pieces:
+
+search_exact_entity()
+search_entity_candidates()
+search_entity_candidates_by_vector()
+
+Eventually I'd have the API return something like:
+
+{
+  "items": [
+    {
+      "id": "ent_123",
+      "name": "Apple Inc.",
+      "type": "Organization",
+      "score": 0.97,
+      "match_type": "exact"
+    },
+    {
+      "id": "ent_456",
+      "name": "Apple Records",
+      "type": "Organization",
+      "score": 0.73,
+      "match_type": "semantic"
+    }
+  ]
+}
+
+10. Graph statistics
+This is very useful for your overall dashboard.
+
+GET /graph/stats
+Return things like:
+
+{
+  "entities": 12842,
+  "relationships": 38291,
+  "relationship_types": 84,
+  "claims": 194023,
+  "documents": 1523,
+  "chunks": 48291,
+
+  "entity_types": {
+    "Person": 3211,
+    "Organization": 2910,
+    "Location": 1822
+  },
+
+  "top_relationship_types": [
+    {
+      "type": "WORKS_FOR",
+      "count": 4210
+    },
+    {
+      "type": "LOCATED_IN",
+      "count": 3821
+    }
+  ]
+}
+
+This makes a good dashboard homepage.
+
+Suggested API structure
+If I were building your FastAPI layer, I'd organize it approximately like this:
+
+/api/v1
+│
+├── /entities
+│   ├── GET    /
+│   ├── GET    /search
+│   ├── GET    /{entity_id}
+│   ├── GET    /{entity_id}/relationships
+│   ├── GET    /{entity_id}/graph
+│   └── GET    /{entity_id}/context
+│
+├── /relationships
+│   ├── GET    /{relationship_id}
+│   └── GET    /between
+│
+├── /relationship-types
+│   ├── GET    /
+│   └── GET    /{relationship_type_id}
+│
+├── /claims
+│   ├── GET    /{claim_id}
+│   └── GET    /
+│
+├── /documents
+│   ├── GET    /
+│   └── GET    /{document_id}
+│
+└── /graph
+    └── GET    /stats
+
+The 5 endpoints I'd build first
+Don't build everything initially. For an entity/relationship store UI, I'd start with:
+
+GET /entities — browse/search entities
+GET /entities/{id} — entity details
+GET /entities/{id}/graph — visualize neighborhood
+GET /entities/{id}/context — show evidence
+GET /graph/stats — dashboard statistics
+That gives you a very nice UI flow:
+
+                 ┌────────────────────┐
+                 │   Knowledge Graph  │
+                 │      Dashboard     │
+                 └─────────┬──────────┘
+                           │
+                    /entities
+                           │
+                           ▼
+                 ┌────────────────────┐
+                 │   Entity Browser   │
+                 │                    │
+                 │ Apple Inc.         │
+                 │ Microsoft          │
+                 │ OpenAI             │
+                 └─────────┬──────────┘
+                           │
+                    /entities/:id
+                           │
+              ┌────────────┼────────────┐
+              ▼            ▼            ▼
+          Overview      Graph       Evidence
+              │            │            │
+              │     /graph            /context
+              │            │            │
+              ▼            ▼            ▼
+          Properties   Entities       Claims
+                       + edges       + chunks
+
+One thing I'd change in your current driver
+There are a couple of issues worth fixing before putting an API on top.
+
+For example, this:
+
+result = self.driver.execute_query(...)
+if not result:
+    return None
+
+return EntityNode.model_validate(result)
+
+isn't validating the returned Neo4j result correctly. execute_query() returns an EagerResult, so you should extract the record/node first.
+
+Also, in save_entities() you accept:
+
+entities: list[EntityNode]
+
+but the Cypher says:
+
+UNWIND $claims AS claim
+
+and you pass:
+
+entities=[...]
+
+So the parameter naming is inconsistent. It would be cleaner to make this either claims throughout or actually implement entity creation there if that method is intended to save entities.
+
+There is also an important architectural distinction I'd recommend: keep ingestion/write endpoints separate from exploration/read endpoints. Your current driver is primarily a persistence layer; the API layer should expose domain-oriented operations like /entities/{id}/graph, rather than mirroring methods such as save_claims() one-for-one.
+
+
+

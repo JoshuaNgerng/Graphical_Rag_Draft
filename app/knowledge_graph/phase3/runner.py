@@ -8,7 +8,7 @@ from app.knowledge_graph.models.processing_chunk import (
 )
 from app.knowledge_graph.context_manager import DataProcessingContext
 from app.models.entity_relationship import (
-    RelationshipNode, EntityNode, RelationshipType
+    RelationshipNode, EntityNode, RelationshipType, gen_claim
 )
 
 def run_phase3(phase2: Sequence[ChunkDataExtraction], ctx: DataProcessingContext):
@@ -29,8 +29,16 @@ def run_phase3(phase2: Sequence[ChunkDataExtraction], ctx: DataProcessingContext
                 resolved_type.append(r.resolved_type)
             if r.resolved:
                 resolved_nodes.append(r.resolved)
+            r.observation.confidence = decision.confidence
+        claims = [
+            gen_claim(data.chunk_info, r.resolved, r.observation)
+            for r in data.relationships
+            if r.resolved and r.validation
+        ]
         ctx.driver.save_relationship_types(resolved_type, update_existing=False)
         ctx.driver.save_relationships(resolved_nodes)
+        ctx.driver.save_claims(claims)
+
             
 
 def _check_relationship_entity_ref(

@@ -5,7 +5,7 @@ from app.core.config import get_config, Config
 
 def setup_dramatiq(config: Config):
     broker = RabbitmqBroker(
-        host="rabbitmq",
+        host=config.RABBITMQ_HOST,
         port=config.RABBITMQ_PORT,
     )
 

@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 class Node(BaseModel):
     id: str
@@ -18,6 +18,6 @@ class ChunkData(BaseModel):
 class Chunk(ChunkData):
     chunk_id: str
     document_id: str
-    embedding: list[float]
+    embedding: list[float] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)

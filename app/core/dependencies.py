@@ -1,5 +1,4 @@
 from contextlib import asynccontextmanager
-from celery import Celery
 from fastapi import FastAPI, Request
 
 from app.core.config import Config, get_config
@@ -21,6 +20,7 @@ async def lifespan(app: FastAPI):
 
     # Startup operations
     logger.info(f"Starting up {config.APP_NAME}")
+    logger.info(f"DEBUG: config:{config.model_dump_json(indent=2)}")
  
     driver = Neo4jDriver(config)
 
@@ -51,9 +51,6 @@ def get_embedding(request: Request) -> Embedding:
 
 def get_storage(request: Request) -> MinIOStorage:
     return request.app.state.storage
-
-def get_celery_app(request: Request) -> Celery:
-    return request.app.state.celery_app
 
 def get_state(request: Request):
     return request.app.state
