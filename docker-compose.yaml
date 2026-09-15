@@ -67,11 +67,12 @@ services:
       timeout: 5s
       retries: 10
       start_period: 10s
-
   ollama:
     container_name: ollama 
     image: ollama/ollama:latest
     restart: unless-stopped
+    env_file:
+      - .env.docker
     ports:
       - "11434:11434"
     volumes:
@@ -81,10 +82,8 @@ services:
       "ollama serve &
       pid=$$!;
       until ollama list >/dev/null 2>&1; do sleep 1; done;
-      echo $OLLAMA_MODEL_NAME;
-      echo $OLLAMA_EMBEDDING_MODEL;
-      ollama pull $OLLAMA_MODEL_NAME;
-      ollama pull $OLLAMA_EMBEDDING_MODEL;
+      echo $$OLLAMA_EMBEDDING_MODEL;
+      ollama pull $$OLLAMA_EMBEDDING_MODEL;
       wait $$pid"
 
   minio:

@@ -13,6 +13,10 @@ neo4j-graphrag==1.18.0
 # ollama llm
 ollama==0.6.2
 
+# google gemini
+google-auth==2.58.0
+google-genai==2.23.0
+
 # S3
 boto3==1.43.91
 botocore==1.43.91
