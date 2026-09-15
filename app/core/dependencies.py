@@ -6,7 +6,7 @@ from app.core.config import get_config
 from app.core.logging import logger
 from app.neo4j.driver import Neo4jDriver
 from app.neo4j.schema import Neo4jSchema
-from app.ollama.embedding import Embedding
+from app.llm_service.ollama.embedding import Embedding
 from app.storage.MinIOStorage import MinIOStorage
 import app.tasks.broker # import to run setup function
 

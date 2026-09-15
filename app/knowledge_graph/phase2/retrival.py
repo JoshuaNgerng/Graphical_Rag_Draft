@@ -3,7 +3,7 @@ from app.models.entity_relationship import (
 )
 from app.models.observations import EntityContext
 from app.neo4j.driver import Neo4jDriver
-from app.ollama.embedding import Embedding
+from app.llm_service.ollama.embedding import Embedding
 from typing import Self
 from dataclasses import dataclass
 

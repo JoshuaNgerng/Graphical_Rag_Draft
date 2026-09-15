@@ -2,15 +2,15 @@ from typing import Sequence
 
 from app.core.config import Config
 from app.models.entity_relationship import (
-    EntityNode, RelationshipNode, RelationshipCandidate, RelationshipType
+    EntityNode, RelationshipType
 )
-from app.ollama.llm import LLM
+from app.llm_service.gemini.client import Gemini_LLM
 from app.knowledge_graph.models.decisions import (
     ChooseType, Choose
 )
 
 
-class RelationshipValidator(LLM):
+class RelationshipValidator(Gemini_LLM):
     def __init__(self, config: Config):
         super().__init__(config)
         self.context = self.__build_context()

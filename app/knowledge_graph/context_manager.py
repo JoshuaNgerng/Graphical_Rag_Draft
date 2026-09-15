@@ -1,5 +1,5 @@
 from app.core.config import Config
-from app.ollama.embedding import Embedding
+from app.llm_service.ollama.embedding import Embedding
 from app.neo4j.driver import Neo4jDriver
 from app.knowledge_graph.phase1.extraction import RelationExtractor
 from app.knowledge_graph.phase2.entity_resolver import EntityResolver

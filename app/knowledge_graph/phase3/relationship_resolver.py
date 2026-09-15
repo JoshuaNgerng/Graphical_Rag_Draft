@@ -4,7 +4,7 @@ from app.core.config import Config
 from app.models.entity_relationship import (
     EntityNode, RelationshipNode, RelationshipCandidate
 )
-from app.ollama.llm import LLM
+from app.llm_service.gemini.client import Gemini_LLM
 from app.knowledge_graph.models.decisions import (
     Decision as D, DecisionType
 )
@@ -17,7 +17,7 @@ class RelationshipResolution(D):
 class RelationshipResolutionData(RelationshipResolution):
     relationship_candidate: RelationshipCandidate 
 
-class RelationshipResolver(LLM):
+class RelationshipResolver(Gemini_LLM):
     def __init__(self, config: Config):
         super().__init__(config)
         self.context = self.__build_context()

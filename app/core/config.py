@@ -33,15 +33,22 @@ class Config(BaseSettings):
 
     # Ollama
     OLLAMA_URL: str
-    OLLAMA_MODEL_NAME: str
-    OLLAMA_TEMPERATURE: int
     OLLAMA_EMBEDDING_MODEL: str
-    OLLAMA_LOG: bool =  Field(default=False)
-    
+    # OLLAMA_MODEL_NAME: str
+    # OLLAMA_TEMPERATURE: int
+    # OLLAMA_LOG: bool =  Field(default=False)
+    # OLLAMA_CONTEXT_WINDOW: int = Field(default=4096)
+
+    GEMINI_API_KEY: str
+    GEMINI_MODEL_NAME: str
+    GEMINI_TEMPERATURE: int
+    GEMINI_CONTEXT_WINDOW: int = Field(default=4096)
+    GEMINI_LOG: bool =  Field(default=False)
+     
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
-        # extra="ignore",
+        extra="ignore",
     )
 
     @field_validator('LOG_LEVEL')
@@ -54,7 +61,7 @@ class Config(BaseSettings):
         }: return "INFO"
         return v
 
-    @field_validator('OLLAMA_LOG')
+    @field_validator('GEMINI_LOG')
     @classmethod
     def check_ollama_log(cls, v):
         if isinstance(v, bool):

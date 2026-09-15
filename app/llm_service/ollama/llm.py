@@ -6,14 +6,16 @@ from pydantic import BaseModel
 
 from app.core.config import Config
 from app.core.logging import logger
+from app.llm.llm_base import LLM_BASE
 
 T = TypeVar("T", bound=BaseModel | str)
 
-class LLM:
+class LLM(LLM_BASE):
     def __init__(self, config: Config) -> None:
         self.model = config.OLLAMA_MODEL_NAME
         self.options = {
-            "temperature": config.OLLAMA_TEMPERATURE #0
+            "temperature": config.OLLAMA_TEMPERATURE, #0
+            "num_ctx": config.OLLAMA_CONTEXT_WINDOW,
         }
         self.client = Client(config.OLLAMA_URL) 
         self.log = config.OLLAMA_LOG

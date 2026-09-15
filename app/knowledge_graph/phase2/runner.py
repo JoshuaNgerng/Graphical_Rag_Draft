@@ -7,7 +7,6 @@ from app.knowledge_graph.models.processing_chunk import (
 
 from app.knowledge_graph.context_manager import DataProcessingContext
 from app.neo4j.driver import Neo4jDriver
-from app.ollama.embedding import Embedding
 
 def run_phase2(
         phase1: Sequence[ChunkDataExtraction],

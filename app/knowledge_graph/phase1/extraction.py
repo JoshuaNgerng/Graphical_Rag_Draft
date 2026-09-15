@@ -3,13 +3,13 @@ from typing import Any
 from string import Template
 
 from app.core.config import Config
-from app.ollama.llm import LLM
+from app.llm_service.gemini.client import Gemini_LLM
 from app.models.observations import (
     GraphObservation, GraphObservationNormalize 
 )
 
 
-class RelationExtractor(LLM):
+class RelationExtractor(Gemini_LLM):
 
     def __init__(self, config: Config) -> None:
         super().__init__(config=config)

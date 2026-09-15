@@ -15,10 +15,10 @@ def get_entities(
     page_size: int = 25,
     driver: Neo4jDriver = Depends(get_driver)
 ):
-    pagenation = PaginationRequest(
-        page=page, page_size=page_size
+    page_param = PaginationRequest(
+        page=(page - 1) * page_size, page_size=page_size
     )
-    result = driver.get_entities_listing(type, pagenation, search=search)
+    result = driver.get_entities_listing(type, page_param, search=search)
     return EntityListingResponse.model_validate(result)
 
 @router.get('/candidates')

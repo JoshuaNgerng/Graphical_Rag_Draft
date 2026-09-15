@@ -1,6 +1,6 @@
 from app.core.config import Config
 from app.knowledge_graph.models.processing_chunk import (
-    ChunksProcessing, ChunkDataProcess, ChunkData,
+    ChunkData,
     EntityExtraction, RelationshipExtraction
 )
 

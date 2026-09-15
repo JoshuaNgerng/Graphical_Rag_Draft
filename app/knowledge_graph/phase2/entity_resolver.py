@@ -9,7 +9,7 @@ from app.models.entity_relationship import EntityNode
 from app.models.observations import (
     EntityContext, EntityNormalizeObservation
 )
-from app.ollama.llm import LLM
+from app.llm_service.gemini.client import Gemini_LLM
 from app.knowledge_graph.models.decisions import Decision as D
 
 class Decision(D):
@@ -31,7 +31,7 @@ class Decision(D):
         return re.sub(r"\s+", "_", buffer)
 
 
-class EntityResolver(LLM):
+class EntityResolver(Gemini_LLM):
 
     def __init__(self, config: Config) -> None:
         super().__init__(config)
