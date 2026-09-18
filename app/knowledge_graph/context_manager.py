@@ -1,6 +1,7 @@
 from app.core.config import Config
 from app.llm_service.ollama.embedding import Embedding
 from app.neo4j.driver import Neo4jDriver
+from app.postgres.session import Postgres
 from app.knowledge_graph.phase1.extraction import RelationExtractor
 from app.knowledge_graph.phase2.entity_resolver import EntityResolver
 from app.knowledge_graph.phase2.retrival import RetrievalCandidates
@@ -18,6 +19,7 @@ class DataProcessingContext:
         self.entity_repo = EntityRepo(self.driver, self.embedding)
         self.relationship_resolver = RelationshipResolver(config)
         self.relationship_validator = RelationshipValidator(config)
+        self.db = Postgres().init(config)
 
     def __enter__(self):
         return self
@@ -29,3 +31,4 @@ class DataProcessingContext:
         self.entity_resolver.close()
         self.relationship_resolver.close()
         self.relationship_validator.close()
+        self.db.close()

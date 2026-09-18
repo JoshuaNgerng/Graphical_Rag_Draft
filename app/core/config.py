@@ -1,4 +1,5 @@
 import os
+from typing import Any
 from pydantic import field_validator, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
@@ -43,8 +44,22 @@ class Config(BaseSettings):
     GEMINI_MODEL_NAME: str
     GEMINI_TEMPERATURE: int
     GEMINI_CONTEXT_WINDOW: int = Field(default=4096)
-    GEMINI_LOG: bool =  Field(default=False)
-     
+    GEMINI_LOG: bool = Field(default=False)
+
+    POSTGRES_USER: str
+    POSTGRES_PASSWORD: str
+    POSTGRES_DB: str
+    POSTGRES_HOST: str
+    POSTGRES_PORT: int
+    POSTGRES_ECHO_LOG: bool = Field(default=False)
+    POSTGRES_POOL_SIZE: int = Field(default=5)
+    POSTGRES_MAX_OVERFLOW: int = Field(default=10)
+    POSTGRES_POOL_TIMEOUT: int = Field(default=30)
+    POSTGRES_POOL_RECYCLE: int = Field(default=1800)
+    POSTGRES_POOL_PRE_PING: bool = Field(default=True)
+    POSTGRES_CONNECT_TIMEOUT: int = Field(default=10)
+    POSTGRES_COMMAND_TIMEOUT: int = Field(default=30)
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -63,17 +78,32 @@ class Config(BaseSettings):
 
     @field_validator('GEMINI_LOG')
     @classmethod
-    def check_ollama_log(cls, v):
-        if isinstance(v, bool):
-            return v
-        try:
-            v = str(v)
-        except:
-            return False
-        return v.lower() in ("true", "1", "t")
+    def check_log(cls, v):
+        _validate_bool(v)
+
+    @field_validator('POSTGRES_ECHO_LOG')
+    @classmethod
+    def check_echo_log(cls, v):
+        _validate_bool(v)
+
+    @field_validator('POSTGRES_POOL_PRE_PING')
+    @classmethod
+    def check_pool_pre_ping(cls, v):
+        _validate_bool(v)
+
 
 @lru_cache
 def get_config():
     return Config() # type: ignore
+
+def _validate_bool(v: Any) -> bool:
+    if isinstance(v, bool):
+        return v
+    try:
+        v = str(v)
+    except:
+        return False
+    return v.lower() in ("true", "1", "t")
+
 
 # settings = Settings() # type: ignore

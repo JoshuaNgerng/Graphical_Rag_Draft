@@ -1,9 +1,9 @@
 from typing import Sequence
 from pydantic import BaseModel, Field
 
-from app.knowledge_graph.models.decisions import ChooseType, DecisionType
+from app.models.decisions import ChooseType, DecisionType
 from app.knowledge_graph.models.processing_chunk import (
-    ChunkDataExtraction, ChunkData,
+    ChunkDataExtraction,
     EntityExtraction, RelationshipExtraction
 )
 from app.knowledge_graph.context_manager import DataProcessingContext
@@ -12,10 +12,13 @@ from app.models.entity_relationship import (
 )
 
 def run_phase3(phase2: Sequence[ChunkDataExtraction], ctx: DataProcessingContext):
+    res = []
     for data in phase2:
         resolved_type = []
         resolved_nodes = []
         for r in data.relationships:
+            if r.choose is not None:
+                continue
             _check_relationship_entity_ref(r, data.entities)
             if r.resolved is None: continue
             _resolve_relationship(r, data.context_embedding, ctx)
@@ -23,6 +26,7 @@ def run_phase3(phase2: Sequence[ChunkDataExtraction], ctx: DataProcessingContext
                 relationship.source_entity, relationship.target_entity,  # type: ignore
                 relationship.resolved_type, context                      # type: ignore
             )
+            r.choose = decision.choose
             r.validation = decision.choose == ChooseType.ACCEPT
             if not r.validation: continue
             if r.resolved_type:
@@ -38,6 +42,8 @@ def run_phase3(phase2: Sequence[ChunkDataExtraction], ctx: DataProcessingContext
         ctx.driver.save_relationship_types(resolved_type, update_existing=False)
         ctx.driver.save_relationships(resolved_nodes)
         ctx.driver.save_claims(claims)
+        res.append(data)
+    return res
 
             
 

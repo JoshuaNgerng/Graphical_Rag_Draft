@@ -5,17 +5,22 @@ from app.knowledge_graph.models.processing_chunk import (
 )
 
 from app.knowledge_graph.context_manager import DataProcessingContext
-from app.models.documents import Chunk
+from app.models.documents import Chunk as DocChunk
+from app.models.data_processing import Chunk
 
 def run_phase1(
-        data: Sequence[Chunk], ctx: DataProcessingContext
+        data: Sequence[Chunk | DocChunk], ctx: DataProcessingContext
 ) -> list[ChunkDataExtraction]:
     res = []
+    buffer = []
     for d in data:
         extracted = ctx.extractor.extract(d.text)
+        c = d if isinstance(d, DocChunk) else DocChunk.model_validate(d)
+        buffer.append(c)
         res.append(
             ChunkDataExtraction(
-                chunk_info=d,
+                chunk_info=c,
+                extracted=True,
                 context_embedding=list(ctx.embedding.encode(d.text)),
                 entities=[
                     EntityExtraction(observation=e) 
@@ -27,5 +32,7 @@ def run_phase1(
                 ]
             )
         )
-    ctx.driver.save_chunks(list(data))
+    ctx.driver.save_chunks(buffer)
     return res
+
+# with ctx.db.session() as session:

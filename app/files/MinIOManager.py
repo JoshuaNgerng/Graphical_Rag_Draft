@@ -5,9 +5,9 @@ import boto3
 from botocore.exceptions import BotoCoreError, ClientError
 
 from app.core.config import Config
-from app.storage.StorageInterface import StorageInterface
+from app.files.FileManagerInterface import FileManagerInterface
 
-class MinIOStorage(StorageInterface):
+class MinIOManager(FileManagerInterface):
     def __init__(self, config: Config) -> None:
         self.bucket = config.MINIO_BUCKET
 

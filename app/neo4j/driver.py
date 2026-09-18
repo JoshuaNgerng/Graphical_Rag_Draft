@@ -8,7 +8,7 @@ from app.models.entity_relationship import (
     RelationshipCandidate
 )
 from app.models.observations import (
-    ClaimNode, EntityContext, Claim
+    ClaimNode, EntityContext 
 )
 from app.models.driver_query_results import (
     PaginationResult, SaveResult, DataResult

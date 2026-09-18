@@ -5,7 +5,7 @@ from app.models.entity_relationship import (
     EntityNode, RelationshipNode, RelationshipCandidate
 )
 from app.llm_service.gemini.client import Gemini_LLM
-from app.knowledge_graph.models.decisions import (
+from app.models.decisions import (
     Decision as D, DecisionType
 )
 

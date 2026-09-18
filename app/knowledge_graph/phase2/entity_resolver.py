@@ -1,7 +1,5 @@
 import re
 
-from typing import Literal
-
 from pydantic import BaseModel, Field, field_validator
 
 from app.core.config import Config
@@ -10,7 +8,7 @@ from app.models.observations import (
     EntityContext, EntityNormalizeObservation
 )
 from app.llm_service.gemini.client import Gemini_LLM
-from app.knowledge_graph.models.decisions import Decision as D
+from app.models.decisions import Decision as D
 
 class Decision(D):
     # Only populated for MERGE

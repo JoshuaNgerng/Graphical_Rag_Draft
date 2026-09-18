@@ -4,8 +4,9 @@ from uuid import uuid4
 from functools import lru_cache
 
 from app.core.config import Config, get_config
+from app.files.FileManagerInterface import FileManagerInterface
 
-class LocalStorage:
+class LocalStorage(FileManagerInterface):
     def __init__(self, config: Config):
         root = config.STORAGE_ROOT_DIR
         root_dir = Path(root) if root else Path(tempfile.gettempdir()) 

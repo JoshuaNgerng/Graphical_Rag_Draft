@@ -15,6 +15,8 @@ def run_phase2(
     for data in phase1:
         resolved_entites = []
         for e in data.entities:
+            if e.decision is not None:
+                continue
             _resolve_entity_pipeline(
                 e, data.chunk_info.text, 
                 data.context_embedding, 
@@ -24,7 +26,7 @@ def run_phase2(
                 resolved_entites.append(e.resolved)
         ctx.entity_repo.save_new_entity_bulk(resolved_entites)
 
-    return phase1
+    return list(phase1)
 
 def _resolve_entity_pipeline(
         entity_object: EntityExtraction,
@@ -41,6 +43,7 @@ def _resolve_entity_pipeline(
         entity_nodes.append(node)
     decision = ctx.entity_resolver.decide_entity(obs, context, buffer)
     new_entity = ctx.entity_repo.resolve_entity_decision(entity_nodes, decision)
+    entity_object.decision = decision.decision
     entity_object.resolved = new_entity
     if new_entity: 
         resolved_id = new_entity.id

@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 
 from app.core.config import Config
 
-class StorageInterface(ABC):
+class FileManagerInterface(ABC):
     @abstractmethod
     def __init__(self, config: Config) -> None: ...
     @abstractmethod

@@ -1,9 +1,9 @@
 from io import BytesIO
 
 from app.core.config import get_config
-from app.storage.MinIOStorage import MinIOStorage
+from app.files.MinIOManager import MinIOManager
 from app.knowledge_graph.context_manager import DataProcessingContext
-from app.knowledge_graph.runner import processing_pdf
+from app.knowledge_graph.runner import processing_pdf, resume_failed_task
 
 import pymupdf as fitz
 import dramatiq
@@ -11,11 +11,18 @@ import dramatiq
 @dramatiq.actor(time_limit=24 * 60 * 60 * 1000)
 def ingest_pdf_doc(job_id: str, file_key: str):
     config = get_config()
-    storage = MinIOStorage(config)
+    storage = MinIOManager(config)
     file_bytes = storage.download_file(file_key)
     with fitz.open(stream=BytesIO(file_bytes), filetype="pdf") as doc:
         with DataProcessingContext(config) as ctx:
-            processing_pdf(doc, file_key, ctx)            
+            processing_pdf(doc, job_id, file_key, ctx)
+
+@dramatiq.actor(time_limit=24 * 60 * 60 * 1000)
+def rerun_ingest_pdf_doc(job_id: str):
+    config = get_config()
+    with DataProcessingContext(config) as ctx:
+        resume_failed_task(job_id, ctx)
+
 
 '''
 move to store info in postgres example
