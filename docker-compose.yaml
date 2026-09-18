@@ -120,8 +120,20 @@ services:
       echo 'MinIO initialization complete';
       "
 
+  postgres:
+    container_name: postgres
+    image: postgres:15-alpine
+    restart: always
+    env_file:
+      - .env.docker
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data
+
 volumes:
   neo4j_data:
   neo4j_logs:
   ollama_data:
   minio_data:
+  postgres_data:

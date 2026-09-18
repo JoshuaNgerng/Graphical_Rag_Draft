@@ -30,6 +30,9 @@ python-multipart==0.0.32
 dramatiq==2.2.1
 pika==1.4.4
 
+# postgres 
+SQLAlchemy==2.0.53
+
 # utlis
 orjson==3.11.9
 loguru==0.7.3
