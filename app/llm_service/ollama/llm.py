@@ -6,12 +6,14 @@ from pydantic import BaseModel
 
 from app.core.config import Config
 from app.core.logging import logger
-from app.llm.llm_base import LLM_BASE
+from app.llm_service.llm_base import LLM_BASE
 
 T = TypeVar("T", bound=BaseModel | str)
 
 class LLM(LLM_BASE):
     def __init__(self, config: Config) -> None:
+        if config.OLLAMA_MODEL_NAME is None:
+            raise RuntimeError("OLLAMA LLM service requires OLLAMA_MODEL_NAME")
         self.model = config.OLLAMA_MODEL_NAME
         self.options = {
             "temperature": config.OLLAMA_TEMPERATURE, #0

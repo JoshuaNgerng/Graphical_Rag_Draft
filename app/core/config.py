@@ -35,14 +35,14 @@ class Config(BaseSettings):
     # Ollama
     OLLAMA_URL: str
     OLLAMA_EMBEDDING_MODEL: str
-    # OLLAMA_MODEL_NAME: str
-    # OLLAMA_TEMPERATURE: int
-    # OLLAMA_LOG: bool =  Field(default=False)
-    # OLLAMA_CONTEXT_WINDOW: int = Field(default=4096)
+    OLLAMA_MODEL_NAME: str | None = Field(default=None)
+    OLLAMA_TEMPERATURE: int = Field(default=0)
+    OLLAMA_LOG: bool =  Field(default=False)
+    OLLAMA_CONTEXT_WINDOW: int = Field(default=4096)
 
-    GEMINI_API_KEY: str
-    GEMINI_MODEL_NAME: str
-    GEMINI_TEMPERATURE: int
+    GEMINI_API_KEY: str | None = Field(default=None)
+    GEMINI_MODEL_NAME: str | None = Field(default=None)
+    GEMINI_TEMPERATURE: int = Field(default=0)
     GEMINI_CONTEXT_WINDOW: int = Field(default=4096)
     GEMINI_LOG: bool = Field(default=False)
 

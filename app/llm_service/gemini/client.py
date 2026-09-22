@@ -8,6 +8,11 @@ from google import genai
 
 class Gemini_LLM(LLM_BASE):
     def __init__(self, config: Config) -> None:
+        if (
+            config.GEMINI_MODEL_NAME is None or
+            config.GEMINI_API_KEY is None
+        ):
+            raise RuntimeError("Gemini LLM service requires GEMINI_MODEL_NAME and GEMINI_API_KEY")
         self.API_KEY = config.GEMINI_API_KEY
         self.TEMPERATURE = config.GEMINI_TEMPERATURE
         self.MODEL_NAME = config.GEMINI_MODEL_NAME
