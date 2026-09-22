@@ -231,3 +231,4 @@ check*txt
 minio_data
 neo4j_data
 neo4j_logs
+postgres_data

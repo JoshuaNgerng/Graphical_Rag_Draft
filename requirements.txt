@@ -32,6 +32,8 @@ pika==1.4.4
 
 # postgres 
 SQLAlchemy==2.0.53
+psycopg==3.3.5
+psycopg-binary==3.3.5
 
 # utlis
 orjson==3.11.9

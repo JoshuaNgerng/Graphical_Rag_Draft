@@ -88,7 +88,7 @@ services:
 
   minio:
     container_name: minio 
-    image: minio/minio
+    image: quay.io/minio/minio:latest
     command: server /data --console-address ":9001"
     env_file:
       - .env.docker
@@ -99,26 +99,31 @@ services:
       - minio_data:/data
 
   minio-init:
-    container_name: minio-init 
-    image: minio/mc
+    container_name: minio-init
+    image: ghcr.io/golithus/mc:RELEASE.2025-08-13T08-35-41Z
     depends_on:
       minio:
         condition: service_started
     env_file:
       - .env.docker
-    entrypoint: >
-      /bin/sh -c "
-      until mc alias set minio http://minio:9000
-      $$MINIO_ROOT_USER
-      $$MINIO_ROOT_PASSWORD; do
-        echo 'Waiting for MinIO...';
-        sleep 2;
-      done;
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        echo "Waiting for MinIO..."
 
-      mc mb --ignore-existing minio/$$MINIO_BUCKET;
+        until mc alias set minio \
+          http://minio:9000 \
+          "$$MINIO_ROOT_USER" \
+          "$$MINIO_ROOT_PASSWORD"; do
+          echo "MinIO is not ready yet..."
+          sleep 2
+        done
 
-      echo 'MinIO initialization complete';
-      "
+        echo "MinIO is ready."
+
+        mc mb --ignore-existing "minio/$$MINIO_BUCKET"
+
+        echo "MinIO initialization complete."
 
   postgres:
     container_name: postgres
