@@ -13,8 +13,7 @@ router = APIRouter()
 
 @router.get('/')
 async def get_job_list(session: Session = Depends(get_db_session)):
-    job_ids = session.scalars(select(JobTask.job_id))
-    return list(job_ids)
+    return list(session.scalars(select(JobTask.job_id)))
 
 @router.get('/{job_id}')
 async def get_job_status(job_id: str, session: Session = Depends(get_db_session)):

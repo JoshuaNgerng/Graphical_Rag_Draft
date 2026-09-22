@@ -30,7 +30,7 @@ class Entities(TableBase):
     __tablename__ = "entities"
     chunk_pk: Mapped[int] = mapped_column(Integer, ForeignKey("chunk.id", ondelete="CASCADE"))
     data: Mapped[EntityExtraction] = mapped_column(PydanticJSON(EntityExtraction))
-    decision: Mapped[DecisionType | None] = mapped_column(Enum, default=None)
+    decision: Mapped[DecisionType | None] = mapped_column(Enum(DecisionType, name="decision_type"), default=None)
     job_id: Mapped[int] = mapped_column(Integer, ForeignKey("job_task.id", ondelete="CASCADE"))
     job_task: Mapped['JobTask'] = relationship('JobTask', foreign_keys=[job_id], back_populates='entities')
 
@@ -38,7 +38,7 @@ class Relationships(TableBase):
     __tablename__ = "relationships"
     chunk_pk: Mapped[int] = mapped_column(Integer, ForeignKey("chunk.id", ondelete="CASCADE"))
     data: Mapped[RelationshipExtraction] = mapped_column(PydanticJSON(RelationshipExtraction))
-    choose: Mapped[ChooseType | None] = mapped_column(Enum, default=None)
+    choice: Mapped[ChooseType | None] = mapped_column(Enum(ChooseType, name='choice_type'), default=None)
     job_id: Mapped[int] = mapped_column(Integer, ForeignKey("job_task.id", ondelete="CASCADE"))
     job_task: Mapped['JobTask'] = relationship('JobTask', foreign_keys=[job_id], back_populates='relationships')
 

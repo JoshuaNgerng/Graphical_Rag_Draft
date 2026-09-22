@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
 from typing import Generator
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Depends
 from sqlalchemy.orm import Session
 
 from app.core.config import Config, get_config
@@ -62,7 +62,9 @@ def get_storage(request: Request) -> MinIOManager:
 def get_db(request: Request) -> Postgres:
     return request.app.state.db
 
-def get_db_session(db: Postgres) -> Generator[Session, None, None]:
+def get_db_session(
+    db: Postgres = Depends(get_db),
+) -> Generator[Session, None, None]:
     with db.session() as session:
         yield session
 
