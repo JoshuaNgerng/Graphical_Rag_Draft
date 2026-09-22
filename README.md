@@ -452,7 +452,8 @@ The project currently uses:
 * **Vector embeddings**
 * **FastAPI** for API experimentation
 
-LLM execution is being tested using both hosted APIs and locally running models such as Ollama.
+Ollama is used for vector embedding
+LLM tested both Ollama and Gemini 
 
 ---
 
@@ -512,6 +513,10 @@ This project is currently **experimental and under active development**.
 * [ ] Benchmark datasets
 * [ ] Quantitative comparison with schema-first pipelines
 * [ ] Large-scale performance testing
+
+### Current testing
+
+* There are still bugs when saving and recovering from Postgres that is being fix now
 
 ---
 
